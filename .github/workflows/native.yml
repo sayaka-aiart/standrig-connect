@@ -1,0 +1,17 @@
+name: Native source checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build native app
+        shell: powershell
+        run: ./scripts/build-native.ps1
+      - name: Core tests
+        run: dotnet run --project native/Connect.Tests -c Release

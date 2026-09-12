@@ -1,0 +1,98 @@
+[
+  {
+    "license": "License.txt",
+    "name": "Microsoft.ClearScript.V8",
+    "contentHash": "oEJxEMqzzC8XYE9kA1ajmfmloAuSlNIzNyrIfwROXkKjfeePptvUT22MqHfV6rRV4//B7XShlq7VM6o2ZM1eZQ==",
+    "version": "7.5.1.1",
+    "noticeFiles": 6,
+    "licenseUrl": "https://aka.ms/deprecateLicenseUrl"
+  },
+  {
+    "license": "License.txt",
+    "name": "Microsoft.ClearScript.V8.Native.win-x64",
+    "contentHash": "N79bR+RG7FD8wv/tdXZuOLDx3YAQ+mSB5P0gcUNMGEFO4DljRSPlJcEzHLrPvrlPzNnc3aV6Rx2v5V3qordPJg==",
+    "version": "7.5.1.1",
+    "noticeFiles": 6,
+    "licenseUrl": "https://aka.ms/deprecateLicenseUrl"
+  },
+  {
+    "license": "License.txt",
+    "name": "Microsoft.ClearScript.Core",
+    "contentHash": "H3R4OaqQPfwxewnZcvTU6qUFyzJ05FchBD4IlO6Z0WO3iWh8PyAWHDcnt4FUmo/t0m40o8rkgnJ7g9pDT7pwJQ==",
+    "version": "7.5.1.1",
+    "noticeFiles": 6,
+    "licenseUrl": "https://aka.ms/deprecateLicenseUrl"
+  },
+  {
+    "license": "License.txt",
+    "name": "Microsoft.ClearScript.V8.ICUData",
+    "contentHash": "Jg3yFIWPkfsjOHzVUTbA0VgnxXBtX9BwSL00E8HIljFm3f203e+mlJYO0tTHnqetA0xZyLKbRjRuPotUP/47Nw==",
+    "version": "7.5.1.1",
+    "noticeFiles": 6,
+    "licenseUrl": "https://aka.ms/deprecateLicenseUrl"
+  },
+  {
+    "license": "MIT",
+    "name": "Microsoft.NETCore.Platforms",
+    "contentHash": "VyPlqzH2wavqquTcYpkIIAQ6WdenuKoFN0BdYBbCWsclXacSOHNQn66Gt4z5NBqEYW0FAPm5rlvki9ZiCij5xQ==",
+    "version": "5.0.0",
+    "noticeFiles": 2,
+    "licenseUrl": "https://licenses.nuget.org/MIT"
+  },
+  {
+    "license": null,
+    "name": "Microsoft.NETCore.Targets",
+    "contentHash": "3Wrmi0kJDzClwAC+iBdUBpEKmEle8FQNsCs77fkiOIw/9oYA07bL1EZNX0kQ2OMN3xpwvl0vAtOCYY3ndDNlhQ==",
+    "version": "1.1.3",
+    "noticeFiles": 1,
+    "licenseUrl": "http://go.microsoft.com/fwlink/?LinkId=329770"
+  },
+  {
+    "license": "MIT",
+    "name": "Microsoft.Win32.Registry",
+    "contentHash": "dDoKi0PnDz31yAyETfRntsLArTlVAVzUzCIvvEDsDsucrl33Dl8pIJG06ePTJTI3tGpeyHS9Cq7Foc/s4EeKcg==",
+    "version": "5.0.0",
+    "noticeFiles": 2,
+    "licenseUrl": "https://licenses.nuget.org/MIT"
+  },
+  {
+    "license": "MIT",
+    "name": "Newtonsoft.Json",
+    "contentHash": "HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ==",
+    "version": "13.0.3",
+    "noticeFiles": 1,
+    "licenseUrl": "https://licenses.nuget.org/MIT"
+  },
+  {
+    "license": null,
+    "name": "System.Runtime",
+    "contentHash": "abhfv1dTK6NXOmu4bgHIONxHyEqFjW8HwXPmpY9gmll+ix9UNo4XDcmzJn6oLooftxNssVHdJC1pGT9jkSynQg==",
+    "version": "4.3.1",
+    "noticeFiles": 1,
+    "licenseUrl": "http://go.microsoft.com/fwlink/?LinkId=329770"
+  },
+  {
+    "license": "MIT",
+    "name": "System.Security.AccessControl",
+    "contentHash": "dagJ1mHZO3Ani8GH0PHpPEe/oYO+rVdbQjvjJkBRNQkX4t0r1iaeGn8+/ybkSLEan3/slM0t59SVdHzuHf2jmw==",
+    "version": "5.0.0",
+    "noticeFiles": 2,
+    "licenseUrl": "https://licenses.nuget.org/MIT"
+  },
+  {
+    "license": "MIT",
+    "name": "System.Security.Principal.Windows",
+    "contentHash": "t0MGLukB5WAVU9bO3MGzvlGnyJPgUlcwerXn1kzBRjwLKixT96XV0Uza41W49gVd8zEMFu9vQEFlv0IOrytICA==",
+    "version": "5.0.0",
+    "noticeFiles": 2,
+    "licenseUrl": "https://licenses.nuget.org/MIT"
+  },
+  {
+    "license": null,
+    "name": "System.Text.RegularExpressions",
+    "contentHash": "N0kNRrWe4+nXOWlpLT4LAY5brb8caNFlUuIRpraCVMDLYutKkol1aV079rQjLuSxKMJT2SpBQsYX9xbcTMmzwg==",
+    "version": "4.3.1",
+    "noticeFiles": 1,
+    "licenseUrl": "http://go.microsoft.com/fwlink/?LinkId=329770"
+  }
+]

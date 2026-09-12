@@ -1,0 +1,478 @@
+[
+  {
+    "source": "README.md",
+    "target": "README.md"
+  },
+  {
+    "source": "README.en.md",
+    "target": "README.en.md"
+  },
+  {
+    "source": "LICENSE",
+    "target": "LICENSE"
+  },
+  {
+    "source": "NOTICE",
+    "target": "NOTICE"
+  },
+  {
+    "source": "THIRD_PARTY.md",
+    "target": "THIRD_PARTY.md"
+  },
+  {
+    "source": "package-lock.json",
+    "target": "package-lock.json"
+  },
+  {
+    "source": "docs/BUILD.md",
+    "target": "docs/BUILD.md"
+  },
+  {
+    "source": "docs/SOURCE-DISTRIBUTION.md",
+    "target": "docs/SOURCE-DISTRIBUTION.md"
+  },
+  {
+    "source": ".github/workflows/native.yml",
+    "target": ".github/workflows/native.yml"
+  },
+  {
+    "source": "scripts/build-native.ps1",
+    "target": "scripts/build-native.ps1"
+  },
+  {
+    "source": "scripts/build-evaluator.mjs",
+    "target": "scripts/build-evaluator.mjs"
+  },
+  {
+    "source": "scripts/setup-native-inference.ps1",
+    "target": "scripts/setup-native-inference.ps1"
+  },
+  {
+    "source": "scripts/setup-spout.ps1",
+    "target": "scripts/setup-spout.ps1"
+  },
+  {
+    "source": "scripts/collect-native-notices.ps1",
+    "target": "scripts/collect-native-notices.ps1"
+  },
+  {
+    "source": "scripts/prepare-public-source.mjs",
+    "target": "scripts/prepare-public-source.mjs"
+  },
+  {
+    "source": "scripts/public-source-files.json",
+    "target": "scripts/public-source-files.json"
+  },
+  {
+    "source": "scripts/public-package.json",
+    "target": "scripts/public-package.json"
+  },
+  {
+    "source": "scripts/public-gitignore",
+    "target": "scripts/public-gitignore"
+  },
+  {
+    "source": "native/Connect.Camera/Camera.cpp",
+    "target": "native/Connect.Camera/Camera.cpp"
+  },
+  {
+    "source": "native/Connect.Core/Connect.Core.csproj",
+    "target": "native/Connect.Core/Connect.Core.csproj"
+  },
+  {
+    "source": "native/Connect.Core/DemoPose.cs",
+    "target": "native/Connect.Core/DemoPose.cs"
+  },
+  {
+    "source": "native/Connect.Core/EngineHost.cs",
+    "target": "native/Connect.Core/EngineHost.cs"
+  },
+  {
+    "source": "native/Connect.Core/FrameWaiter.cs",
+    "target": "native/Connect.Core/FrameWaiter.cs"
+  },
+  {
+    "source": "native/Connect.Core/IdlePose.cs",
+    "target": "native/Connect.Core/IdlePose.cs"
+  },
+  {
+    "source": "native/Connect.Core/SendStatistics.cs",
+    "target": "native/Connect.Core/SendStatistics.cs"
+  },
+  {
+    "source": "native/Connect.Desktop/CameraCapture.cs",
+    "target": "native/Connect.Desktop/CameraCapture.cs"
+  },
+  {
+    "source": "native/Connect.Desktop/CameraDevices.cs",
+    "target": "native/Connect.Desktop/CameraDevices.cs"
+  },
+  {
+    "source": "native/Connect.Desktop/Connect.Desktop.csproj",
+    "target": "native/Connect.Desktop/Connect.Desktop.csproj"
+  },
+  {
+    "source": "native/Connect.Desktop/FaceDetector.cs",
+    "target": "native/Connect.Desktop/FaceDetector.cs"
+  },
+  {
+    "source": "native/Connect.Desktop/GpuDiagnosticPipeline.cs",
+    "target": "native/Connect.Desktop/GpuDiagnosticPipeline.cs"
+  },
+  {
+    "source": "native/Connect.Desktop/ModelEvaluationPipeline.cs",
+    "target": "native/Connect.Desktop/ModelEvaluationPipeline.cs"
+  },
+  {
+    "source": "native/Connect.Desktop/ModelRenderPipeline.cs",
+    "target": "native/Connect.Desktop/ModelRenderPipeline.cs"
+  },
+  {
+    "source": "native/Connect.Desktop/ModelSlots.cs",
+    "target": "native/Connect.Desktop/ModelSlots.cs"
+  },
+  {
+    "source": "native/Connect.Desktop/Program.cs",
+    "target": "native/Connect.Desktop/Program.cs"
+  },
+  {
+    "source": "native/Connect.Evaluation/Connect.Evaluation.csproj",
+    "target": "native/Connect.Evaluation/Connect.Evaluation.csproj"
+  },
+  {
+    "source": "native/Connect.Evaluation/DefaultTracking.cs",
+    "target": "native/Connect.Evaluation/DefaultTracking.cs"
+  },
+  {
+    "source": "native/Connect.Evaluation/ModelEvaluator.cs",
+    "target": "native/Connect.Evaluation/ModelEvaluator.cs"
+  },
+  {
+    "source": "native/Connect.Evaluation/ModelSlotStore.cs",
+    "target": "native/Connect.Evaluation/ModelSlotStore.cs"
+  },
+  {
+    "source": "native/Connect.Evaluation/MotionPlayback.cs",
+    "target": "native/Connect.Evaluation/MotionPlayback.cs"
+  },
+  {
+    "source": "native/Connect.Evaluation/packages.lock.json",
+    "target": "native/Connect.Evaluation/packages.lock.json"
+  },
+  {
+    "source": "native/Connect.Evaluation/Resources/evaluator.js",
+    "target": "native/Connect.Evaluation/Resources/evaluator.js"
+  },
+  {
+    "source": "native/Connect.Evaluation/Resources/provenance.json",
+    "target": "native/Connect.Evaluation/Resources/provenance.json"
+  },
+  {
+    "source": "native/Connect.Evaluation/Resources/STANDRIG-LICENSE",
+    "target": "native/Connect.Evaluation/Resources/STANDRIG-LICENSE"
+  },
+  {
+    "source": "native/Connect.Evaluation/Resources/STANDRIG-NOTICE",
+    "target": "native/Connect.Evaluation/Resources/STANDRIG-NOTICE"
+  },
+  {
+    "source": "native/Connect.Evaluation/Resources/ZOD-LICENSE",
+    "target": "native/Connect.Evaluation/Resources/ZOD-LICENSE"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/manifest.json",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/manifest.json"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.Core-7.5.1.1/License.txt",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.Core-7.5.1.1/License.txt"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.Core-7.5.1.1/licenses/ClearScript/License.txt",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.Core-7.5.1.1/licenses/ClearScript/License.txt"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.Core-7.5.1.1/licenses/V8/LICENSE",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.Core-7.5.1.1/licenses/V8/LICENSE"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.Core-7.5.1.1/licenses/V8/LICENSE.fdlibm",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.Core-7.5.1.1/licenses/V8/LICENSE.fdlibm"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.Core-7.5.1.1/licenses/V8/LICENSE.strongtalk",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.Core-7.5.1.1/licenses/V8/LICENSE.strongtalk"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.Core-7.5.1.1/licenses/V8/LICENSE.v8",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.Core-7.5.1.1/licenses/V8/LICENSE.v8"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8-7.5.1.1/License.txt",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8-7.5.1.1/License.txt"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8-7.5.1.1/licenses/ClearScript/License.txt",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8-7.5.1.1/licenses/ClearScript/License.txt"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8-7.5.1.1/licenses/V8/LICENSE",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8-7.5.1.1/licenses/V8/LICENSE"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8-7.5.1.1/licenses/V8/LICENSE.fdlibm",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8-7.5.1.1/licenses/V8/LICENSE.fdlibm"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8-7.5.1.1/licenses/V8/LICENSE.strongtalk",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8-7.5.1.1/licenses/V8/LICENSE.strongtalk"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8-7.5.1.1/licenses/V8/LICENSE.v8",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8-7.5.1.1/licenses/V8/LICENSE.v8"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.ICUData-7.5.1.1/License.txt",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.ICUData-7.5.1.1/License.txt"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.ICUData-7.5.1.1/licenses/ClearScript/License.txt",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.ICUData-7.5.1.1/licenses/ClearScript/License.txt"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.ICUData-7.5.1.1/licenses/V8/LICENSE",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.ICUData-7.5.1.1/licenses/V8/LICENSE"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.ICUData-7.5.1.1/licenses/V8/LICENSE.fdlibm",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.ICUData-7.5.1.1/licenses/V8/LICENSE.fdlibm"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.ICUData-7.5.1.1/licenses/V8/LICENSE.strongtalk",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.ICUData-7.5.1.1/licenses/V8/LICENSE.strongtalk"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.ICUData-7.5.1.1/licenses/V8/LICENSE.v8",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.ICUData-7.5.1.1/licenses/V8/LICENSE.v8"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.Native.win-x64-7.5.1.1/License.txt",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.Native.win-x64-7.5.1.1/License.txt"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.Native.win-x64-7.5.1.1/licenses/ClearScript/License.txt",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.Native.win-x64-7.5.1.1/licenses/ClearScript/License.txt"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.Native.win-x64-7.5.1.1/licenses/V8/LICENSE",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.Native.win-x64-7.5.1.1/licenses/V8/LICENSE"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.Native.win-x64-7.5.1.1/licenses/V8/LICENSE.fdlibm",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.Native.win-x64-7.5.1.1/licenses/V8/LICENSE.fdlibm"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.Native.win-x64-7.5.1.1/licenses/V8/LICENSE.strongtalk",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.Native.win-x64-7.5.1.1/licenses/V8/LICENSE.strongtalk"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.Native.win-x64-7.5.1.1/licenses/V8/LICENSE.v8",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.ClearScript.V8.Native.win-x64-7.5.1.1/licenses/V8/LICENSE.v8"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.NETCore.Platforms-5.0.0/LICENSE.TXT",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.NETCore.Platforms-5.0.0/LICENSE.TXT"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.NETCore.Platforms-5.0.0/THIRD-PARTY-NOTICES.TXT",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.NETCore.Platforms-5.0.0/THIRD-PARTY-NOTICES.TXT"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.NETCore.Targets-1.1.3/ThirdPartyNotices.txt",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.NETCore.Targets-1.1.3/ThirdPartyNotices.txt"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.Win32.Registry-5.0.0/LICENSE.TXT",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.Win32.Registry-5.0.0/LICENSE.TXT"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.Win32.Registry-5.0.0/THIRD-PARTY-NOTICES.TXT",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Microsoft.Win32.Registry-5.0.0/THIRD-PARTY-NOTICES.TXT"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/Newtonsoft.Json-13.0.3/LICENSE.md",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/Newtonsoft.Json-13.0.3/LICENSE.md"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/System.Runtime-4.3.1/ThirdPartyNotices.txt",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/System.Runtime-4.3.1/ThirdPartyNotices.txt"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/System.Security.AccessControl-5.0.0/LICENSE.TXT",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/System.Security.AccessControl-5.0.0/LICENSE.TXT"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/System.Security.AccessControl-5.0.0/THIRD-PARTY-NOTICES.TXT",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/System.Security.AccessControl-5.0.0/THIRD-PARTY-NOTICES.TXT"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/System.Security.Principal.Windows-5.0.0/LICENSE.TXT",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/System.Security.Principal.Windows-5.0.0/LICENSE.TXT"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/System.Security.Principal.Windows-5.0.0/THIRD-PARTY-NOTICES.TXT",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/System.Security.Principal.Windows-5.0.0/THIRD-PARTY-NOTICES.TXT"
+  },
+  {
+    "source": "native/Connect.Evaluation/THIRD_PARTY/System.Text.RegularExpressions-4.3.1/ThirdPartyNotices.txt",
+    "target": "native/Connect.Evaluation/THIRD_PARTY/System.Text.RegularExpressions-4.3.1/ThirdPartyNotices.txt"
+  },
+  {
+    "source": "native/Connect.Evaluation/TrackingPlayback.cs",
+    "target": "native/Connect.Evaluation/TrackingPlayback.cs"
+  },
+  {
+    "source": "native/Connect.Evaluation.Tests/Connect.Evaluation.Tests.csproj",
+    "target": "native/Connect.Evaluation.Tests/Connect.Evaluation.Tests.csproj"
+  },
+  {
+    "source": "native/Connect.Evaluation.Tests/packages.lock.json",
+    "target": "native/Connect.Evaluation.Tests/packages.lock.json"
+  },
+  {
+    "source": "native/Connect.Evaluation.Tests/Program.cs",
+    "target": "native/Connect.Evaluation.Tests/Program.cs"
+  },
+  {
+    "source": "native/Connect.Graphics/ArtPaths.h",
+    "target": "native/Connect.Graphics/ArtPaths.h"
+  },
+  {
+    "source": "native/Connect.Graphics/Graphics.cpp",
+    "target": "native/Connect.Graphics/Graphics.cpp"
+  },
+  {
+    "source": "native/Connect.Graphics/TexturedMesh.h",
+    "target": "native/Connect.Graphics/TexturedMesh.h"
+  },
+  {
+    "source": "native/Connect.Tests/Connect.Tests.csproj",
+    "target": "native/Connect.Tests/Connect.Tests.csproj"
+  },
+  {
+    "source": "native/Connect.Tests/Program.cs",
+    "target": "native/Connect.Tests/Program.cs"
+  },
+  {
+    "source": "scripts/evaluation/entry.ts",
+    "target": "scripts/evaluation/entry.ts"
+  },
+  {
+    "source": "scripts/evaluation/face-input.ts",
+    "target": "scripts/evaluation/face-input.ts"
+  },
+  {
+    "source": "scripts/evaluation/final-geometry.ts",
+    "target": "scripts/evaluation/final-geometry.ts"
+  },
+  {
+    "source": "scripts/evaluation/finite-packet.ts",
+    "target": "scripts/evaluation/finite-packet.ts"
+  },
+  {
+    "source": "scripts/evaluation/image-effects.ts",
+    "target": "scripts/evaluation/image-effects.ts"
+  },
+  {
+    "source": "scripts/evaluation/make-effects-fixture.mjs",
+    "target": "scripts/evaluation/make-effects-fixture.mjs"
+  },
+  {
+    "source": "scripts/evaluation/make-fixture.mjs",
+    "target": "scripts/evaluation/make-fixture.mjs"
+  },
+  {
+    "source": "scripts/evaluation/make-render-fixture.mjs",
+    "target": "scripts/evaluation/make-render-fixture.mjs"
+  },
+  {
+    "source": "scripts/evaluation/path-geometry.ts",
+    "target": "scripts/evaluation/path-geometry.ts"
+  },
+  {
+    "source": "scripts/evaluation/source.json",
+    "target": "scripts/evaluation/source.json"
+  },
+  {
+    "source": "scripts/evaluation/test-final-geometry.mjs",
+    "target": "scripts/evaluation/test-final-geometry.mjs"
+  },
+  {
+    "source": "scripts/evaluation/test-finite-packet.mjs",
+    "target": "scripts/evaluation/test-finite-packet.mjs"
+  },
+  {
+    "source": "scripts/evaluation/tracking-session.ts",
+    "target": "scripts/evaluation/tracking-session.ts"
+  },
+  {
+    "source": "src/tracking/profile.ts",
+    "target": "src/tracking/profile.ts"
+  },
+  {
+    "source": "src/tracking/tracking.ts",
+    "target": "src/tracking/tracking.ts"
+  },
+  {
+    "source": "src/tracking/types.ts",
+    "target": "src/tracking/types.ts"
+  },
+  {
+    "source": "src/tracking/parameters.ts",
+    "target": "src/tracking/parameters.ts"
+  },
+  {
+    "source": "src/tracking/faceInputs.ts",
+    "target": "src/tracking/faceInputs.ts"
+  },
+  {
+    "source": "scripts/public-package.json",
+    "target": "package.json"
+  },
+  {
+    "source": "scripts/public-gitignore",
+    "target": ".gitignore"
+  },
+  {
+    "source": ".gitattributes",
+    "target": ".gitattributes"
+  },
+  {
+    "source": "native/Connect.Core/ParameterControl.cs",
+    "target": "native/Connect.Core/ParameterControl.cs"
+  },
+  {
+    "source": "native/Connect.Core/ParameterHttpServer.cs",
+    "target": "native/Connect.Core/ParameterHttpServer.cs"
+  },
+  {
+    "source": "native/Connect.Tests/ParameterApiChecks.cs",
+    "target": "native/Connect.Tests/ParameterApiChecks.cs"
+  },
+  {
+    "source": "docs/PARAMETER-API.md",
+    "target": "docs/PARAMETER-API.md"
+  },
+  {
+    "source": "native/Connect.Core/OutputView.cs",
+    "target": "native/Connect.Core/OutputView.cs"
+  },
+  {
+    "source": "native/Connect.Desktop/OutputSettings.cs",
+    "target": "native/Connect.Desktop/OutputSettings.cs"
+  },
+  {
+    "source": "native/Connect.Desktop/OutputViewChecks.cs",
+    "target": "native/Connect.Desktop/OutputViewChecks.cs"
+  }
+]

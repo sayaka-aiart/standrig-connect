@@ -1,0 +1,16 @@
+node_modules/
+dist/
+workspace/
+reports/
+recordings/
+profiles/
+.env
+.env.*
+*.psd
+*.psb
+*.user
+*.suo
+.vs/
+native/**/bin/
+native/**/obj/
+native/artifacts/

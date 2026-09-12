@@ -1,0 +1,8 @@
+StandRig Connect
+Copyright 2026 StandRig Connect contributors
+
+Original source is licensed under Apache License 2.0.
+The embedded evaluator incorporates modified StandRig evaluation code.
+Original notices and licenses are preserved in native/Connect.Evaluation/Resources.
+Third-party components retain their own licenses; see THIRD_PARTY.md.
+User-supplied artwork and model data are not licensed by this project.
