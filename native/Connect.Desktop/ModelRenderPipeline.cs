@@ -22,6 +22,7 @@ internal sealed class ModelRenderPipeline : IFramePipeline
     private readonly MotionPlayback? motion;
     private readonly Func<IdlePreset>? idlePreset;
     private readonly IdlePose idlePose=new();
+    private readonly bool breathBound;
     private readonly ParameterControl? parameterControl;
     private string? parameterSession;
     private readonly TrackingPlayback? tracking;
@@ -56,6 +57,13 @@ internal sealed class ModelRenderPipeline : IFramePipeline
         {
             if(modelJson==null&&new FileInfo(path).Length>64L*1024*1024)throw new InvalidOperationException("Model exceeds 64 MiB limit");
             var json=modelJson??File.ReadAllText(path);if(System.Text.Encoding.UTF8.GetByteCount(json)>64L*1024*1024)throw new InvalidOperationException("Model exceeds 64 MiB limit");using var model=JsonDocument.Parse(json);
+            static bool ReferencesBreath(JsonElement element){
+                if(element.ValueKind==JsonValueKind.String)return element.GetString()=="ParamBreath";
+                if(element.ValueKind==JsonValueKind.Array)return element.EnumerateArray().Any(ReferencesBreath);
+                if(element.ValueKind==JsonValueKind.Object)return element.EnumerateObject().Any(p=>p.Name is not ("name" or "label" or "id" or "metadata")&&ReferencesBreath(p.Value));
+                return false;
+            }
+            breathBound=new[]{"parts","deformers"}.Any(key=>model.RootElement.TryGetProperty(key,out var group)&&ReferencesBreath(group));
             var reasons=new List<string>();
             foreach(var part in model.RootElement.GetProperty("parts").EnumerateArray())
             {
@@ -115,9 +123,12 @@ internal sealed class ModelRenderPipeline : IFramePipeline
         if(requested!=view){requested.Validate();if(requested.Width!=view.Width||requested.Height!=view.Height)Marshal.ThrowExceptionForHR(ConnectResize(device,(uint)requested.Width,(uint)requested.Height));view=requested;matrix=view.Matrix(stageWidth,stageHeight);}
         long allocationStart=GC.GetAllocatedBytesForCurrentThread();var clock=Stopwatch.StartNew();framePrepareMs=frameEffectMs=0;
         if(latestPose!=null)foreach(var item in latestPose.Values)values[item.Key]=item.Value;
-        var activeValues=benchmarkMotion||demoEnabled?.Invoke()==true?DemoPose.Apply(values,ranges,elapsedSeconds):idlePose.Apply(values,ranges,elapsedSeconds,idlePreset?.Invoke()??IdlePreset.Off);
+        bool demoActive=benchmarkMotion||demoEnabled?.Invoke()==true;
+        var activeValues=demoActive?DemoPose.Apply(values,ranges,elapsedSeconds):new Dictionary<string,double>(values);
         var trackingValues=tracking?.Advance(evaluator);
         if(trackingValues!=null){activeValues=new Dictionary<string,double>(activeValues);foreach(var pair in trackingValues)activeValues[pair.Key]=pair.Value;}
+        if(!demoActive)activeValues=idlePose.Apply(activeValues,ranges,elapsedSeconds,idlePreset?.Invoke()??IdlePreset.Off,breathBound);
+        matrix=view.Matrix(stageWidth,stageHeight,demoActive?0:idlePose.BreathingStretch);
         var motionValues=motion?.Advance(evaluator,elapsedSeconds);
         if(motionValues!=null){activeValues=new Dictionary<string,double>(activeValues);foreach(var pair in motionValues)activeValues[pair.Key]=pair.Value;}
 

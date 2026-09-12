@@ -7,30 +7,32 @@ public sealed class IdlePose
 {
     private readonly Dictionary<string,double> offsets=new();
     private double? previousTime;
-    public Dictionary<string,double> Apply(IReadOnlyDictionary<string,double> input,IReadOnlyDictionary<string,(double Min,double Max)> ranges,double seconds,IdlePreset preset)
+    public double BreathingStretch {get;private set;}
+    public Dictionary<string,double> Apply(IReadOnlyDictionary<string,double> input,IReadOnlyDictionary<string,(double Min,double Max)> ranges,double seconds,IdlePreset preset,bool breathBound=true)
     {
         if(!double.IsFinite(seconds))throw new ArgumentOutOfRangeException(nameof(seconds));
         double dt=previousTime.HasValue?Math.Clamp(seconds-previousTime.Value,0,.1):0;
         previousTime=seconds;
-        if(preset==IdlePreset.Off&&offsets.Count==0)return input as Dictionary<string,double>??new Dictionary<string,double>(input);
+        if(preset==IdlePreset.Off&&offsets.Count==0&&BreathingStretch<1e-8)return input as Dictionary<string,double>??new Dictionary<string,double>(input);
         double blend=1-Math.Exp(-dt/0.6);
+        BreathingStretch+=((preset!=IdlePreset.Off&&!breathBound?.012*(1-Math.Cos(seconds*2*Math.PI/4.8))/2:0)-BreathingStretch)*blend;
         var desired=new Dictionary<string,double>();
         void Set(string id,double fraction){if(ranges.TryGetValue(id,out var r))desired[id]=(r.Max-r.Min)*fraction;}
         if(preset!=IdlePreset.Off){
             double breath=(1-Math.Cos(seconds*2*Math.PI/4.8))/2;
-            if(ranges.ContainsKey("ParamBreath"))Set("ParamBreath",.35*breath);
-            else Set("ParamBodyAngleY",.012*Math.Sin(seconds*2*Math.PI/4.8));
+            if(breathBound&&ranges.ContainsKey("ParamBreath"))Set("ParamBreath",.35*breath);
+
             if(preset==IdlePreset.Sway){
-                Set("ParamBodyAngleX",.025*Math.Sin(seconds*2*Math.PI/11));
-                Set("ParamBodyAngleZ",.015*Math.Sin(seconds*2*Math.PI/13));
-                Set("ParamAngleZ",.02*Math.Sin(seconds*2*Math.PI/9));
+                Set("ParamBodyAngleX",.05*Math.Sin(seconds*2*Math.PI/11));
+                Set("ParamBodyAngleZ",.03*Math.Sin(seconds*2*Math.PI/13));
+                Set("ParamAngleZ",.04*Math.Sin(seconds*2*Math.PI/9));
             }
             if(preset==IdlePreset.Random){
-                Set("ParamAngleX",.035*Noise(seconds,17));
-                Set("ParamAngleY",.025*Noise(seconds,43));
-                Set("ParamAngleZ",.02*Noise(seconds,71));
-                Set("ParamBodyAngleX",.02*Noise(seconds,101));
-                Set("ParamBodyAngleZ",.015*Noise(seconds,137));
+                Set("ParamAngleX",.07*Noise(seconds,17));
+                Set("ParamAngleY",.05*Noise(seconds,43));
+                Set("ParamAngleZ",.04*Noise(seconds,71));
+                Set("ParamBodyAngleX",.04*Noise(seconds,101));
+                Set("ParamBodyAngleZ",.03*Noise(seconds,137));
             }
         }
         var result=new Dictionary<string,double>(input);

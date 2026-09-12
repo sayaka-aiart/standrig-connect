@@ -8,8 +8,12 @@ internal static class Program
     [STAThread]
     static void Main(string[] args)
     {
+        if(args.Length==3&&args[0]=="--idle-view-test"){ApplicationConfiguration.Initialize();OutputViewChecks.RunIdle(args[1],args[2]);return;}
         if(args.Length==3&&args[0]=="--output-view-test"){ApplicationConfiguration.Initialize();OutputViewChecks.Run(args[1],args[2]);return;}
         if(args.Length==2&&(args[0]=="--camera-worker"||args[0]=="--face-camera-worker")){Environment.ExitCode=Task.Run(()=>CameraCapture.RunWorker(int.Parse(args[1]),args[0]=="--face-camera-worker")).GetAwaiter().GetResult();return;}
+        if(args.Length==2&&args[0]=="--pose-engine-test"){
+            try{using var detector=new PoseDetector();var result=detector.Detect(new byte[640*480*4],640,480,0);File.WriteAllText(args[1],JsonSerializer.Serialize(new{passed=result.Left==null&&result.Right==null,cameraOpened=false}));}catch(Exception ex){File.WriteAllText(args[1],JsonSerializer.Serialize(new{passed=false,error=ex.Message}));Environment.ExitCode=1;}return;
+        }
         if(args.Length==2&&args[0]=="--face-engine-test"){
             try{using var detector=new FaceDetector();var result=detector.Detect(new byte[640*480*4],640,480,0);File.WriteAllText(args[1],JsonSerializer.Serialize(new{passed=result.Count==0,faces=result.Count,cameraOpened=false}));}catch(Exception ex){File.WriteAllText(args[1],JsonSerializer.Serialize(new{passed=false,error=ex.Message}));Environment.ExitCode=1;}return;
         }
@@ -373,19 +377,20 @@ internal sealed partial class MainWindow : Form
         refreshCameras.Click+=async(_,_)=>await RefreshCameras();
         Shown+=async(_,_)=>{if(!testing)await RefreshCameras();};
         cameraRow.Controls.AddRange(new Control[]{cameras,refreshCameras});panel.Controls.Add(cameraRow);panel.Controls.Add(cameraState);
-        var captureRow=new FlowLayoutPanel {AutoSize=true,WrapContents=false};
+        var captureRow=new FlowLayoutPanel {AutoSize=true,WrapContents=true,MaximumSize=new Size(520,0)};
         var startCamera=new Button {Text="カメラ開始",AutoSize=true};var stopCamera=new Button {Text="カメラ停止",AutoSize=true};
         var enableInference=new CheckBox {Text="顔認識（開始時に適用）",AutoSize=true,Checked=true};
+        var upperBody=new CheckBox {Text="上半身（開始時に適用）",AutoSize=true,Checked=true};
         var captureState=new Label {AutoSize=true,Text="撮影停止中"};
         startCamera.Click+=async(_,_)=>{
             if(cameras.SelectedItem is not CameraDevice device){MessageBox.Show("先にカメラを選択してください");return;}
             startCamera.Enabled=stopCamera.Enabled=false;
-            try{await cameraCapture.StopAsync();if(IsDisposed)return;cameraCapture.Start(device,enableInference.Checked);}catch(Exception ex){if(!IsDisposed)MessageBox.Show(ex.Message);}finally{if(!IsDisposed)startCamera.Enabled=stopCamera.Enabled=true;}
+            try{await cameraCapture.StopAsync();if(IsDisposed)return;cameraCapture.Start(device,enableInference.Checked,upperBody.Checked);}catch(Exception ex){if(!IsDisposed)MessageBox.Show(ex.Message);}finally{if(!IsDisposed)startCamera.Enabled=stopCamera.Enabled=true;}
         };
         stopCamera.Click+=async(_,_)=>{startCamera.Enabled=stopCamera.Enabled=false;try{await cameraCapture.StopAsync();}catch(Exception ex){MessageBox.Show(ex.Message);}finally{if(!IsDisposed)startCamera.Enabled=stopCamera.Enabled=true;}};
-        captureRow.Controls.AddRange(new Control[]{startCamera,stopCamera,enableInference});panel.Controls.Add(captureRow);panel.Controls.Add(captureState);
+        captureRow.Controls.AddRange(new Control[]{startCamera,stopCamera,enableInference,upperBody});panel.Controls.Add(captureRow);panel.Controls.Add(captureState);
         var faceInputs=new Label {AutoSize=true,MaximumSize=new Size(520,0)};panel.Controls.Add(faceInputs);
-        refresh.Tick+=(_,_)=>{var c=cameraCapture.State;faceInputs.Text=cameraCapture.Running&&c.Face?.Count==1&&c.Inputs is {} values?string.Join(" / ",values.Where(p=>new[]{"faceYaw","facePitch","faceRoll","eyeLOpen","eyeROpen","mouthOpen"}.Contains(p.Key)).Select(p=>$"{p.Key}: {p.Value:F2}")):"顔入力なし（認識中に正面を向いて中立校正してください）";captureState.Text=$"カメラ: {(cameraCapture.Running?"撮影中":"停止")} / {c.Frames} frames / {c.Width}×{c.Height} / 顔{c.Face?.Count.ToString()??"未認識"} / {c.InferenceMs:F1}ms\n{c.Error??""}";};
+        refresh.Tick+=(_,_)=>{var c=cameraCapture.State;faceInputs.Text=cameraCapture.Running&&c.Face?.Count==1&&c.Inputs is {} values?string.Join(" / ",values.Where(p=>new[]{"faceYaw","facePitch","faceRoll","eyeLOpen","eyeROpen","mouthOpen"}.Contains(p.Key)).Select(p=>$"{p.Key}: {p.Value:F2}")):"顔入力なし（認識中に正面を向いて中立校正してください）";captureState.Text=$"カメラ: {(cameraCapture.Running?"撮影中":"停止")} / {c.Frames} frames / {c.Width}×{c.Height} / 顔{c.Face?.Count.ToString()??"未認識"} / 上半身{(c.BodyEnabled?(c.BodyVisible?(c.BodyPitchVisible?"追従中":"肩追従・腰未検出"):"肩未検出"):"OFF")} / {c.InferenceMs:F1}ms\n{c.Error??""}";};
         panel.Controls.Add(new Label {Text="モーションの指定項目を優先。一時停止は姿勢保持、停止は通常入力へ復帰。",AutoSize=true});
         var tabs=new TabControl {Dock=DockStyle.Fill,Enabled=!testing};
         void Page(string title,params Control[] controls){var page=new TabPage(title);var content=new FlowLayoutPanel {Dock=DockStyle.Fill,AutoScroll=true,FlowDirection=FlowDirection.TopDown,WrapContents=false,Padding=new Padding(16)};content.Controls.AddRange(controls);page.Controls.Add(content);tabs.TabPages.Add(page);}
@@ -397,7 +402,7 @@ internal sealed partial class MainWindow : Form
         outputControls.Controls.AddRange(new Control[]{showOutput,CreateOutputSettingsButton(),spout,stop});
         spoutState.MaximumSize=new Size(520,0);
         Page("配信",Help("カメラ・トラッキング"),cameraRow,cameraState,captureRow,captureState,trackingControls,trackingState,Help("OBSへの出力"),outputControls,spoutState,Help("Spout2: OBSのSpout2ソースで StandRig Connect を選択。出力画面は非表示でも送信できます。\nゲームキャプチャ: Output — Model を選び透過を許可。出力画面を表示しておきます。"));
-        Page("モーション",idleControls,Help("待機は小さな動きです。目・口は操作せず、トラッキングと読込モーションを優先します。呼吸用パラメータがないモデルでは体の上下傾きを使います。"),demo,motionControls,motionState,transport,Help("モーションで指定した項目を優先します。一時停止は姿勢保持、停止で通常入力へ戻ります。"));
+        Page("モーション",idleControls,Help("待機は小さな動きです。目・口は操作せず、トラッキングへ微動を加算します。呼吸リグがないモデルでは足元を基準に小さく縦へ伸縮します。"),demo,motionControls,motionState,transport,Help("モーションで指定した項目を優先します。一時停止は姿勢保持、停止で通常入力へ戻ります。"));
         Page("状態",state,faceInputs);
         if(!testing){
             string sessionFile=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"StandRigConnect","api-session.json");

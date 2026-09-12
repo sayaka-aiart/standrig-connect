@@ -9,10 +9,11 @@ public sealed record OutputView(int Width=640,int Height=480,double Zoom=1,doubl
         var next=this with{Zoom=zoom,X=2*(u-.5-(u-.5-X/2)*ratio),Y=2*(v-.5-(v-.5-Y/2)*ratio)};next.Validate();return next;
     }
     public OutputView Pan(double dx,double dy){var next=this with{X=X+2*dx,Y=Y+2*dy};next.Validate();return next;}
-    public object Matrix(double stageWidth,double stageHeight)
+    public object Matrix(double stageWidth,double stageHeight,double breathingStretch=0)
     {
         Validate();if(!double.IsFinite(stageWidth)||!double.IsFinite(stageHeight)||stageWidth<=0||stageHeight<=0)throw new ArgumentException("Invalid stage size");
+        if(!double.IsFinite(breathingStretch)||breathingStretch<0||breathingStretch>.02)throw new ArgumentException("Invalid breathing stretch");
         double scale=Math.Min(Width/stageWidth,Height/stageHeight)*Zoom;
-        return new{a=scale,b=0,c=0,d=scale,e=(Width-stageWidth*scale)/2+X*Width/2,f=(Height-stageHeight*scale)/2+Y*Height/2};
+        return new{a=scale,b=0,c=0,d=scale*(1+breathingStretch),e=(Width-stageWidth*scale)/2+X*Width/2,f=(Height-stageHeight*scale)/2+Y*Height/2-stageHeight*scale*breathingStretch};
     }
 }

@@ -16,7 +16,7 @@ internal sealed class FaceDetector : IDisposable
         try{var options=new Options {Base=new BaseOptions{Path=path},Mode=2,Faces=1,Detection=.5f,Presence=.5f,Tracking=.5f,Blendshapes=1,Matrices=1};Check(MpFaceLandmarkerCreate(ref options,out handle,out var error),error);}
         finally{Marshal.FreeCoTaskMem(path);}
     }
-    private static void CheckHash(string path,string expected){using var stream=File.OpenRead(path);if(Convert.ToHexString(SHA256.HashData(stream))!=expected)throw new InvalidOperationException("Inference asset hash mismatch");}
+    internal static void CheckHash(string path,string expected){using var stream=File.OpenRead(path);if(Convert.ToHexString(SHA256.HashData(stream))!=expected)throw new InvalidOperationException("Inference asset hash mismatch");}
     internal FaceObservation Detect(byte[] bgrx,int width,int height,long milliseconds)
     {
         int count=checked(width*height);if(rgb.Length!=count*3)rgb=new byte[count*3];
@@ -35,11 +35,11 @@ internal sealed class FaceDetector : IDisposable
             return new((int)result.FaceCount,scores,matrix);
         }finally{if(called)MpFaceLandmarkerCloseResult(ref result);if(image!=0)MpImageFree(image);}
     }
-    private static void Check(int status,nint error){try{if(status!=0)throw new InvalidOperationException(Marshal.PtrToStringUTF8(error)??("MediaPipe error "+status));}finally{if(error!=0)MpErrorFree(error);}}
+    internal static void Check(int status,nint error){try{if(status!=0)throw new InvalidOperationException(Marshal.PtrToStringUTF8(error)??("MediaPipe error "+status));}finally{if(error!=0)MpErrorFree(error);}}
     public void Dispose(){if(handle==0)return;var value=handle;handle=0;Check(MpFaceLandmarkerClose(value,out var error),error);}
     // ABI from official 0.10.35 wheel ctypes definitions, not mutable master headers.
 #pragma warning disable CS0649
-    [StructLayout(LayoutKind.Sequential)] private struct BaseOptions {public nint Buffer;public uint Size;public nint Path;public int Delegate,Environment,System;public nint Version,Certificates;}
+    [StructLayout(LayoutKind.Sequential)] internal struct BaseOptions {public nint Buffer;public uint Size;public nint Path;public int Delegate,Environment,System;public nint Version,Certificates;}
     [StructLayout(LayoutKind.Sequential)] private struct Options {public BaseOptions Base;public int Mode,Faces;public float Detection,Presence,Tracking;public byte Blendshapes,Matrices;public nint Callback;}
     [StructLayout(LayoutKind.Sequential)] private struct Result {public nint Faces;public uint FaceCount;public nint Blends;public uint BlendCount;public nint Matrices;public uint MatrixCount;}
     [StructLayout(LayoutKind.Sequential)] private struct Categories {public nint Data;public uint Count;}

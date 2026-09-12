@@ -474,5 +474,17 @@
   {
     "source": "native/Connect.Desktop/OutputViewChecks.cs",
     "target": "native/Connect.Desktop/OutputViewChecks.cs"
+  },
+  {
+    "source": "native/Connect.Core/UpperBodyTracking.cs",
+    "target": "native/Connect.Core/UpperBodyTracking.cs"
+  },
+  {
+    "source": "native/Connect.Desktop/PoseDetector.cs",
+    "target": "native/Connect.Desktop/PoseDetector.cs"
+  },
+  {
+    "source": "docs/UPPER-BODY.md",
+    "target": "docs/UPPER-BODY.md"
   }
 ]

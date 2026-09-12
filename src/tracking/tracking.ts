@@ -14,6 +14,7 @@ export const DEFAULT_TRACKING_INPUTS: TrackingInputDefinition[] = [
   { id: "faceYaw", label: "Face X", min: -1, max: 1, default: 0, step: 0.01 },
   { id: "facePitch", label: "Face Y", min: -1, max: 1, default: 0, step: 0.01 },
   { id: "faceRoll", label: "Face Z", min: -1, max: 1, default: 0, step: 0.01 },
+  { id: "bodyRoll", label: "Body Z", min: -1, max: 1, default: 0, step: 0.01 },
   { id: "bodyYaw", label: "Body X", min: -1, max: 1, default: 0, step: 0.01 },
   { id: "bodyPitch", label: "Body Y", min: -1, max: 1, default: 0, step: 0.01 },
   { id: "mouthOpen", label: "Mouth", min: 0, max: 1, default: 0.12, step: 0.01 },

@@ -5,7 +5,7 @@ using StandRig.Connect.Evaluation;
 namespace StandRig.Connect.Desktop;
 
 internal sealed record CameraCaptureState(long Frames,int Width,int Height,string? Error)
-{ public FaceObservation? Face {get;init;} public double InferenceMs {get;init;} public Dictionary<string,double>? Inputs {get;init;} }
+{ public FaceObservation? Face {get;init;} public bool BodyEnabled {get;init;} public bool BodyVisible {get;init;} public bool BodyPitchVisible {get;init;} public double InferenceMs {get;init;} public Dictionary<string,double>? Inputs {get;init;} }
 internal sealed class CameraCapture : IDisposable
 {
     private Process? child;
@@ -19,13 +19,14 @@ internal sealed class CameraCapture : IDisposable
     private CameraCaptureState state=new(0,0,0,null);
     internal CameraCaptureState State=>Volatile.Read(ref state);
     internal bool Running{get{try{return child is {HasExited:false};}catch(InvalidOperationException){return false;}}}
-    internal void Start(CameraDevice device,bool inference=false)
+    internal void Start(CameraDevice device,bool inference=false,bool upperBody=false)
     {
         ObjectDisposedException.ThrowIf(disposed,this);
         if(child!=null)throw new InvalidOperationException("先にカメラを停止してください");
         state=new(0,0,0,null);
         var info=new ProcessStartInfo(Environment.ProcessPath!){UseShellExecute=false,CreateNoWindow=true,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true};
         info.ArgumentList.Add(inference?"--face-camera-worker":"--camera-worker");info.ArgumentList.Add(Environment.ProcessId.ToString());
+        if(upperBody&&inference)info.Environment["STANDRIG_UPPER_BODY"]="1";else info.Environment.Remove("STANDRIG_UPPER_BODY");
         child=Process.Start(info)??throw new InvalidOperationException("Camera worker failed to start");
         var process=child;
         process.ErrorDataReceived+=(_,_)=>{};process.BeginErrorReadLine();
@@ -71,6 +72,9 @@ internal sealed class CameraCapture : IDisposable
             if(link.Length>32768)throw new InvalidOperationException("Invalid device");
             _=Task.Run(()=>{Console.ReadLine();Volatile.Write(ref stop,1);});
             using var detector=inference?new FaceDetector():null;
+            using var pose=inference&&Environment.GetEnvironmentVariable("STANDRIG_UPPER_BODY")=="1"?new PoseDetector():null;
+            var body=new StandRig.Connect.UpperBodyTracking();double nextPose=0;
+            (StandRig.Connect.BodyPoint? Left,StandRig.Connect.BodyPoint? Right,StandRig.Connect.BodyPoint? LeftHip,StandRig.Connect.BodyPoint? RightHip) shoulders=(null,null,null,null);
             using var converter=inference?new ModelEvaluator():null;
             Marshal.ThrowExceptionForHR(ConnectOpenCamera(link,out camera));
             var pixels=new byte[1920*1080*4];long frames=0;
@@ -81,8 +85,13 @@ internal sealed class CameraCapture : IDisposable
                 FaceObservation? face=null;double start=clock.Elapsed.TotalMilliseconds;
                 if(detector!=null){long time=Math.Max(previousMs+1,(long)start);face=detector.Detect(pixels,(int)width,(int)height,time);previousMs=time;}
                 var inputs=face==null?null:JsonSerializer.Deserialize<Dictionary<string,double>>(converter!.ConvertFace(JsonSerializer.Serialize(face)));
+                if(pose!=null){
+                    if(start>=nextPose){shoulders=pose.Detect(pixels,(int)width,(int)height,previousMs);nextPose=clock.Elapsed.TotalMilliseconds+66.667;}
+                    var bodyInputs=body.Advance(shoulders.Left,shoulders.Right,start/1000,(double)width/height,shoulders.LeftHip,shoulders.RightHip);
+                    if(inputs!=null)foreach(var pair in bodyInputs)inputs[pair.Key]=pair.Value;
+                }
                 // Raw BGRX stays in this process; only compact face results cross the pipe.
-                Console.WriteLine(JsonSerializer.Serialize(new CameraCaptureState(++frames,(int)width,(int)height,null){Face=face,Inputs=inputs,InferenceMs=detector==null?0:clock.Elapsed.TotalMilliseconds-start}));
+                Console.WriteLine(JsonSerializer.Serialize(new CameraCaptureState(++frames,(int)width,(int)height,null){Face=face,Inputs=inputs,BodyEnabled=pose!=null,BodyVisible=body.Visible,BodyPitchVisible=body.PitchVisible,InferenceMs=detector==null?0:clock.Elapsed.TotalMilliseconds-start}));
             }
             return 0;
         }catch(Exception ex){Console.WriteLine(JsonSerializer.Serialize(new CameraCaptureState(0,0,0,ex.Message)));return 1;}

@@ -6,6 +6,12 @@ export function resetTracking(){previous=Object.fromEntries((parameters??[]).map
 export function loadTrackingProfile(json:string,preserveState=false){
  if(!parameters)throw Error('load a model first');
  const next=parseProfile(JSON.parse(json),parameters);
+ // Older slots gain the optional shoulder-roll mapping only if the model supports it
+ // and neither its input nor output is already assigned by the user.
+ if(parameters.some(p=>p.id==='ParamBodyAngleZ')&&!next.tracking.mappings.some(m=>m.source==='bodyRoll'||m.parameter==='ParamBodyAngleZ')){
+  let id='connect-body-roll';while(next.tracking.mappings.some(m=>m.id===id))id+='-';
+  next.tracking.mappings.push({id,enabled:true,source:'bodyRoll',parameter:'ParamBodyAngleZ',scale:15,offset:0,smoothing:.15,filter:'ema',invert:false});
+ }
  profile=next;if(!preserveState)resetTracking();return JSON.stringify({name:next.name,enabled:next.tracking.enabled,mappings:next.tracking.mappings.length});
 }
 export function mapTracking(json:string){

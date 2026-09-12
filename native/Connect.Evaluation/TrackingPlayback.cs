@@ -50,7 +50,7 @@ public sealed class TrackingPlayback
         bool preserveState=false;
         lock(gate){if(adjust&&(load??next.ProfileJson) is string current){preserveState=load==null;load=DefaultTracking.Adjust(current,gains,smoothing,eyeClosed);adjust=false;}}
         if(clear){lastAccepted=null;evaluator.ResetTracking();overlay=null;next=next with{Active=false};}
-        if(load!=null){try{evaluator.LoadTrackingProfile(load,preserveState);if(!preserveState){lastAccepted=null;overlay=null;next=next with{Active=false,Sequence=-1};}next=next with{Loaded=true,Error=null,ProfileJson=evaluator.ExportTrackingProfile()};}catch(Exception ex) when(ex is Microsoft.ClearScript.ScriptEngineException or ArgumentException){next=next with{Error=ex.Message};}}
+        if(load!=null){try{evaluator.LoadTrackingProfile(DefaultTracking.UpgradeProfile(load),preserveState);if(!preserveState){lastAccepted=null;overlay=null;next=next with{Active=false,Sequence=-1};}next=next with{Loaded=true,Error=null,ProfileJson=evaluator.ExportTrackingProfile()};}catch(Exception ex) when(ex is Microsoft.ClearScript.ScriptEngineException or ArgumentException){next=next with{Error=ex.Message};}}
         double now=clock();
         if(!on||overlay!=null&&now-acceptedAt>=.5){if(overlay!=null)evaluator.ResetTracking();overlay=null;next=next with{Active=false};}
         if(on&&next.Loaded&&sample!=null&&now-sample.Received<.5){

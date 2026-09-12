@@ -6291,6 +6291,14 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			step: .01
 		},
 		{
+			id: "bodyRoll",
+			label: "Body Z",
+			min: -1,
+			max: 1,
+			default: 0,
+			step: .01
+		},
+		{
 			id: "bodyYaw",
 			label: "Body X",
 			min: -1,
@@ -6883,6 +6891,21 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 	function loadTrackingProfile(json, preserveState = false) {
 		if (!parameters) throw Error("load a model first");
 		const next = parseProfile(JSON.parse(json), parameters);
+		if (parameters.some((p) => p.id === "ParamBodyAngleZ") && !next.tracking.mappings.some((m) => m.source === "bodyRoll" || m.parameter === "ParamBodyAngleZ")) {
+			let id = "connect-body-roll";
+			while (next.tracking.mappings.some((m) => m.id === id)) id += "-";
+			next.tracking.mappings.push({
+				id,
+				enabled: true,
+				source: "bodyRoll",
+				parameter: "ParamBodyAngleZ",
+				scale: 15,
+				offset: 0,
+				smoothing: .15,
+				filter: "ema",
+				invert: false
+			});
+		}
 		profile$1 = next;
 		if (!preserveState) resetTracking();
 		return JSON.stringify({

@@ -4,6 +4,21 @@ namespace StandRig.Connect.Desktop;
 
 internal static class OutputViewChecks
 {
+    internal static void RunIdle(string model,string directory)
+    {
+        Directory.CreateDirectory(directory);directory=Path.GetFullPath(directory);
+        using var surface=new Form{ClientSize=new Size(400,400)};
+        using var pipeline=new ModelRenderPipeline(model,surface.Handle,()=>false,_=>{},Path.Combine(directory,"frame.png"),physicsEnabled:false,idlePreset:()=>IdlePreset.Random);
+        for(int i=0;i<=576;i++){
+            bool capture=i==0||i==168||i==576;
+            pipeline.Step(i/60d,capture?new PoseFrame(i,new Dictionary<string,double>()):null);
+            if(capture)File.Copy(Path.Combine(directory,"frame-pose.png"),Path.Combine(directory,$"idle-{i}.png"),true);
+        }
+        using var a=new Bitmap(Path.Combine(directory,"idle-0.png"));using var b=new Bitmap(Path.Combine(directory,"idle-168.png"));int changed=0;
+        for(int y=0;y<a.Height;y++)for(int x=0;x<a.Width;x++)if(a.GetPixel(x,y)!=b.GetPixel(x,y))changed++;
+        if(changed<100)throw new Exception("Idle render has insufficient pixel change");
+        File.WriteAllText(Path.Combine(directory,"result.json"),JsonSerializer.Serialize(new{passed=true,changedPixels=changed,cameraOpened=false,physicsEnabled=false}));
+    }
     internal static void Run(string model,string directory)
     {
         Directory.CreateDirectory(directory);directory=Path.GetFullPath(directory);

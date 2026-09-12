@@ -18,7 +18,7 @@ This is the **0.1.0 development preview** source release, not a finished install
 - OBS Game Capture / Window Capture and optional Spout2 output.
 - Processing continues with the control window minimized or in the tray.
 
-Body motion is inferred from the face, not full-body tracking. Expression hotkeys, an external expression API and vowel recognition are not implemented.
+Optional upper-body tracking estimates shoulder yaw and roll. Body pitch uses shoulders and hips; arms and full-body tracking are not supported. Expression hotkeys, an external expression API and vowel recognition are not implemented.
 
 ## Build and run
 
@@ -84,3 +84,7 @@ Camera processing is local with no ordinary upload or recording. Explicit diagno
 [Source distribution](docs/SOURCE-DISTRIBUTION.md) · [Third-party notices](THIRD_PARTY.md)
 
 Original code is [Apache-2.0](LICENSE); third-party components and artwork retain their licenses. This is independent of Live2D/Cubism and does not directly play CMO3/MOC3 files.
+
+See [Upper-body tracking](docs/UPPER-BODY.md#english) for optional setup and limitations.
+
+Idle breathing and micro-motion are added to tracking values. Loaded motion and external API overrides retain priority on their channels. If the breath parameter is not referenced by parts or deformers, breathing uses up to 1.2% vertical stretch anchored at the stage bottom as a simple fallback.

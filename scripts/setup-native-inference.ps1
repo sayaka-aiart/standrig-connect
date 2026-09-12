@@ -1,4 +1,4 @@
-param([string]$Configuration='Release')
+param([string]$Configuration='Release', [switch]$WithUpperBody)
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 $vendor=Join-Path $root 'workspace/vendor/mediapipe-native'
@@ -25,3 +25,12 @@ if((Get-FileHash (Join-Path $out 'libmediapipe.dll')).Hash -ne 'AA8E6C1B618C30CD
 Copy-Item -LiteralPath $model -Destination (Join-Path $out 'face_landmarker.task')
 @{version='0.10.35';wheel=$wheelUrl;wheelSha256=(Get-FileHash $wheel).Hash;model=$modelUrl;modelSha256=(Get-FileHash $model).Hash;dllSha256=(Get-FileHash (Join-Path $out 'libmediapipe.dll')).Hash;runtime='C API CPU; no Python/browser runtime';redistributionReviewed=$false} | ConvertTo-Json | Set-Content (Join-Path $out 'INFERENCE-PROVENANCE.json')
 Write-Output 'Pinned local inference runtime installed; public redistribution review still required.'
+
+if($WithUpperBody){
+    $pose=Join-Path $vendor 'pose_landmarker_lite.task'
+    $poseUrl='https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task'
+    if(!(Test-Path -LiteralPath $pose)){Invoke-WebRequest $poseUrl -OutFile $pose}
+    if((Get-FileHash $pose).Hash -ne '59929E1D1EE95287735DDD833B19CF4AC46D29BC7AFDDBBF6753C459690D574A'){throw 'Pose model hash mismatch'}
+    Copy-Item -LiteralPath $pose -Destination (Join-Path $out 'pose_landmarker_lite.task')
+    @{model=$poseUrl;sha256=(Get-FileHash $pose).Hash;redistributionReviewed=$false} | ConvertTo-Json | Set-Content (Join-Path $out 'POSE-PROVENANCE.json')
+}

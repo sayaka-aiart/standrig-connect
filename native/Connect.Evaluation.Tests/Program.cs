@@ -1,6 +1,21 @@
 using System.Text.Json;
 using System.Diagnostics;
 using StandRig.Connect.Evaluation;
+if(args.Length>0&&args[0]=="--pitch-profile"){
+ var old="""{"name":"Connect standard","tracking":{"mappings":[{"source":"facePitch","parameter":"ParamAngleY","scale":22.5},{"source":"bodyPitch","parameter":"ParamBodyAngleY","scale":8}]}}""";
+ string upgraded=DefaultTracking.UpgradeProfile(old);
+ using var doc=JsonDocument.Parse(upgraded);var maps=doc.RootElement.GetProperty("tracking").GetProperty("mappings");
+ if(maps[0].GetProperty("scale").GetDouble()!=45||maps[1].GetProperty("scale").GetDouble()!=20)throw new Exception("Pitch upgrade lost gain");
+ if(DefaultTracking.UpgradeProfile(upgraded)!=upgraded)throw new Exception("Pitch upgrade applied twice");
+ string custom=old.Replace("Connect standard","Custom");if(DefaultTracking.UpgradeProfile(custom)!=custom)throw new Exception("Custom profile changed");
+
+ var v2=old.Replace("Connect standard","Connect standard v2").Replace("22.5","45").Replace("\"scale\":8","\"scale\":20").Replace("\"scale\":45","\"scale\":45,\"invert\":true");
+ using var v3=JsonDocument.Parse(DefaultTracking.UpgradeProfile(v2));
+ var face=v3.RootElement.GetProperty("tracking").GetProperty("mappings")[0];
+ if(face.GetProperty("invert").GetBoolean()||face.GetProperty("scale").GetDouble()!=45)throw new Exception("Direction upgrade changed gain or failed to flip");
+ if(DefaultTracking.Mappings.Single(m=>m.Source=="facePitch").Invert||DefaultTracking.Mappings.Single(m=>m.Source=="bodyPitch").Invert)throw new Exception("Pitch default sign changed");
+ Console.WriteLine("PASS pitch profile gains, direction, idempotence and custom preservation");return;
+}
 if(args.Length>0&&args[0]=="--model-slots"){
  var slotDirectory=Path.Combine("reports","slot-tests-"+Guid.NewGuid().ToString("N"));var store=new ModelSlotStore(slotDirectory);
  using var slotEvaluator=new ModelEvaluator();string source=File.ReadAllText("reports/evaluation/model.json");using var metadata=JsonDocument.Parse(slotEvaluator.Load(source));
@@ -8,7 +23,7 @@ if(args.Length>0&&args[0]=="--model-slots"){
  tracking.Submit(1,new Dictionary<string,double>{{"facePitch",.2}});tracking.Advance(slotEvaluator);tracking.CalibrateNeutral();tracking.Advance(slotEvaluator);
  tracking.Adjust("facePitch",2,true,.25,.5);
  var pending=tracking.CaptureProfileAsync();if(pending.IsCompleted)throw new Exception("Snapshot skipped pending adjustment");tracking.Advance(slotEvaluator);string profile=await pending;
- using(var applied=JsonDocument.Parse(profile)){var face=applied.RootElement.GetProperty("tracking").GetProperty("mappings").EnumerateArray().Single(m=>m.GetProperty("source").GetString()=="facePitch");if(face.GetProperty("scale").GetDouble()!=30)throw new Exception("Stale saved gain");}
+ using(var applied=JsonDocument.Parse(profile)){var face=applied.RootElement.GetProperty("tracking").GetProperty("mappings").EnumerateArray().Single(m=>m.GetProperty("source").GetString()=="facePitch");if(face.GetProperty("scale").GetDouble()!=60)throw new Exception("Stale saved gain");}
  var controls=new TrackingControlsSnapshot(new(){{"facePitch",new(2,true)}},.25,.5,true);
  var payload=new ModelSlotDocument(1,source,profile,controls);var first=store.Save(null,"テストモデル",payload);
  var reloadedStore=new ModelSlotStore(slotDirectory);var restored=reloadedStore.Load(first.Id);
