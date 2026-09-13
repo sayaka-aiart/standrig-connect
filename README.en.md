@@ -47,6 +47,9 @@ powershell -NoProfile -File scripts/setup-native-inference.ps1
 
 The generated evaluator is included; ordinary builds and usage do not need Node.js. Framework-dependent execution requires the .NET 8 Windows Desktop Runtime and ASP.NET Core 8 Runtime.
 
+
+Embedded-image models use `.srig` (JSON content). Existing embedded-image `.json` files remain supported. Renaming an image-free rig.json does not make it a portable Connect model.
+
 ## Usage
 
 1. Load a PSD and rig in StandRig and export **model JSON with embedded images**. Direct PSD or image-free rig.json loading is not supported.

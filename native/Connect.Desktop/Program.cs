@@ -247,15 +247,15 @@ internal sealed partial class MainWindow : Form
         showOutput.Click += (_,_) => { if(output != null){output.Show();output.WindowState=FormWindowState.Normal;} };
         panel.Controls.Add(showOutput);
         panel.Controls.Add(new Label { Text = "×でトレイへ格納します。終了はトレイメニューから行ってください。", AutoSize = true });
-        var load = new ToolStripMenuItem("モデルJSONの計算のみ実行（モデル描画を停止）");
+        var load = new ToolStripMenuItem("モデルの計算のみ実行（モデル描画を停止）");
         load.Click += (_,_) => {
-            using var dialog = new OpenFileDialog { Filter = "StandRig model (*.json)|*.json", CheckFileExists = true };
+            using var dialog = new OpenFileDialog { Filter = "StandRig model (*.srig;*.json)|*.srig;*.json", CheckFileExists = true };
             if(dialog.ShowDialog()!=DialogResult.OK)return;
             StartModelEvaluation(dialog.FileName);
         };
         diagnosticMenu.DropDownItems.Add(load);
-        var render=new Button {Text="モデルJSONを開く…",AutoSize=true};
-        render.Click+=(_,_)=>{using var dialog=new OpenFileDialog{Filter="StandRig model (*.json)|*.json",CheckFileExists=true};if(dialog.ShowDialog()!=DialogResult.OK)return;try{StartModelRender(dialog.FileName);activeSlotId=null;}catch(Exception ex){MessageBox.Show(ex.Message);}};
+        var render=new Button {Text="モデルを開く（.srig / .json）…",AutoSize=true};
+        render.Click+=(_,_)=>{using var dialog=new OpenFileDialog{Filter="StandRig model (*.srig;*.json)|*.srig;*.json",CheckFileExists=true};if(dialog.ShowDialog()!=DialogResult.OK)return;try{StartModelRender(dialog.FileName);activeSlotId=null;}catch(Exception ex){MessageBox.Show(ex.Message);}};
         panel.Controls.Add(render);
         var spout=new CheckBox {Text="Spout2送信（StandRig Connect）",AutoSize=true};
         spout.CheckedChanged+=(_,_)=>SetSpoutEnabled(spout.Checked);

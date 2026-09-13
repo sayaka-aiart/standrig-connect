@@ -2,14 +2,14 @@
 
 **トラッキング・配信用Windowsアプリ** · [English](README.en.md)
 
-[StandRig](https://github.com/sayaka-aiart/StandRig)で作ったモデルを、カメラで動かしてOBSへ出力します。画像込みモデルJSONを書き出した後は、StandRig本体・ブラウザ・Pythonの起動は不要です。内部のモデル評価には組み込みV8を使用します。
+[StandRig](https://github.com/sayaka-aiart/StandRig)で作ったモデルを、カメラで動かしてOBSへ出力します。画像込みモデル（.srig）を書き出した後は、StandRig本体・ブラウザ・Pythonの起動は不要です。内部のモデル評価には組み込みV8を使用します。
 
 現在は **0.1.0 開発プレビューのソース公開版**です。完成済みのインストーラーではありません。
 
 ## 主な機能
 
 - [外部パラメータ操作API](docs/PARAMETER-API.md)：一覧取得・一時上書き・解除。ローカルHTTPから操作。
-- 画像込みモデルJSONの読込とDirect3D 11描画。
+- 画像込みモデル（.srig）の読込とDirect3D 11描画。
 - 顔の向き、目の開閉、視線、口のカメラトラッキング。基本動作は鏡向き。
 - 強さ・反転・平滑化・閉眼判定の調整、中立校正。
 - モデルと調整をアプリ内スロットへ保存。最後のスロットを起動時に選択。
@@ -26,7 +26,7 @@
 
 1. Microsoft公式の.NET 8 Desktop RuntimeとASP.NET Core 8 Runtime（両方x64）を導入します。
 2. 再生のみなら `Setup-Runtime.cmd`、カメラ追従も使うなら `Setup-Tracking.cmd` を実行します。後者はV8と顔・上半身推論をまとめて導入します。
-3. `Connect.Desktop.exe` を起動し、画像込みモデルJSONを開きます。
+3. `Connect.Desktop.exe` を起動し、画像込みモデル（.srig）を開きます。
 
 初回はネット接続が必要です。V8ネイティブDLL・推論DLL・推論モデルはZIPに含めず、固定した公式配布元から取得してSHA-256を検証します。ZIP利用者にVisual Studio・SDK・Pythonは不要です。
 
@@ -47,9 +47,12 @@ powershell -NoProfile -File scripts/setup-native-inference.ps1
 
 生成済み評価コードを含むため、通常のビルド・起動にNode.jsは不要です。実行環境には.NET 8 Windows Desktop RuntimeとASP.NET Core 8 Runtimeが必要です。
 
+
+モデルの標準拡張子は `.srig`（中身はJSON）です。既存の画像込み `.json` も引き続き読み込めます。画像なしのrig.jsonは、拡張子の変更だけではConnect用モデルになりません。
+
 ## 使い方
 
-1. StandRigでPSDとリグを読み込み、**画像込みモデルJSON**を書き出します。PSDや画像なしのrig.jsonの直接読込ではありません。
+1. StandRigでPSDとリグを読み込み、**画像込みモデル（.srig）**を書き出します。PSDや画像なしのrig.jsonの直接読込ではありません。
 2. Connectの「モデル」タブでJSONを開きます。
 3. 「配信」タブでカメラを選んで開始し、トラッキングを有効にします。中立校正と「トラッキング調整」で動きを合わせます。
 4. 「モデル」タブでスロットへ保存します。次回は「スロットを使う」で復元できます。
