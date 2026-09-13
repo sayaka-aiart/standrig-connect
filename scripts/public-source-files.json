@@ -486,5 +486,37 @@
   {
     "source": "docs/UPPER-BODY.md",
     "target": "docs/UPPER-BODY.md"
+  },
+  {
+    "source": "scripts/package-native.ps1",
+    "target": "scripts/package-native.ps1"
+  },
+  {
+    "source": "scripts/release/Setup-Tracking.cmd",
+    "target": "scripts/release/Setup-Tracking.cmd"
+  },
+  {
+    "source": "docs/PORTABLE.md",
+    "target": "docs/PORTABLE.md"
+  },
+  {
+    "source": "licenses/ANGLE-LICENSE.txt",
+    "target": "licenses/ANGLE-LICENSE.txt"
+  },
+  {
+    "source": "docs/BINARY-NOTICES.md",
+    "target": "docs/BINARY-NOTICES.md"
+  },
+  {
+    "source": "scripts/setup-v8.ps1",
+    "target": "scripts/setup-v8.ps1"
+  },
+  {
+    "source": "scripts/release/Setup-Runtime.cmd",
+    "target": "scripts/release/Setup-Runtime.cmd"
+  },
+  {
+    "source": "licenses/MICROSOFT-RUNTIME-TERMS.md",
+    "target": "licenses/MICROSOFT-RUNTIME-TERMS.md"
   }
 ]

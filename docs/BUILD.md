@@ -3,7 +3,7 @@
 ## Windows x64 prerequisites
 
 - .NET 8 SDK. Running a framework-dependent build requires both the .NET 8 Windows Desktop Runtime and ASP.NET Core 8 Runtime (for the local Kestrel API). The SDK development environment supplies these runtimes.
-- Visual Studio 2022 C++ Build Tools: Desktop development with C++, MSVC x64 tools and Windows SDK.
+- Visual Studio 2022 Community (subject to its individual/open-source eligibility), or another appropriately licensed Visual Studio installation: Desktop development with C++, MSVC x64 tools and Windows SDK.
 - Microsoft Visual C++ x64 runtime when running on a machine without the build tools.
 - Git for optional Spout SDK setup and evaluator regeneration.
 - Node.js 24+ and npm only for evaluator regeneration and TypeScript checks.
@@ -62,3 +62,9 @@ Some additional evaluation modes require local fixture files (for example report
 Core checks cover lifecycle and idle bounds/continuity. Numeric tests do not prove camera direction, visual quality or OBS reception. Review those with your own model and devices. Test output belongs under ignored reports/.
 
 If Git reports a local certificate-store error on Windows, retry with `git -c http.sslBackend=schannel clone ...`; do not disable certificate verification.
+
+## Local binary candidate
+
+Run `powershell -NoProfile -File scripts/package-native.ps1 -Destination reports/connect-candidate -WithSpout` after Spout setup. Use a new destination. Packaging defaults to `Microsoft.VisualStudio.Product.Community`; `-VisualStudioProduct` can select another licensed edition. This records toolchain metadata and uses the release static CRT (`/MT`). It does not grant or verify license rights.
+
+The ZIP excludes native V8 and inference files; see [PORTABLE.md](PORTABLE.md) for first-run setup and [BINARY-NOTICES.md](BINARY-NOTICES.md) for notices. `releaseApproved=false` means candidate packaging is not publication approval.

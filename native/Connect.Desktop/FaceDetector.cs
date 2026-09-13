@@ -6,15 +6,16 @@ internal sealed record FaceObservation(int Count,Dictionary<string,float> Blends
 internal sealed class FaceDetector : IDisposable
 {
     private nint handle;
+    private GCHandle modelBuffer;
     private byte[] rgb=Array.Empty<byte>();
     internal FaceDetector()
     {
         string model=Path.Combine(AppContext.BaseDirectory,"face_landmarker.task");
         CheckHash(model,"64184E229B263107BC2B804C6625DB1341FF2BB731874B0BCC2FE6544E0BC9FF");
         CheckHash(Path.Combine(AppContext.BaseDirectory,"libmediapipe.dll"),"AA8E6C1B618C30CD3A6AD584DEE1B2F2C99C3F3025D683BADA36E1566D9092B7");
-        nint path=Marshal.StringToCoTaskMemUTF8(model);
-        try{var options=new Options {Base=new BaseOptions{Path=path},Mode=2,Faces=1,Detection=.5f,Presence=.5f,Tracking=.5f,Blendshapes=1,Matrices=1};Check(MpFaceLandmarkerCreate(ref options,out handle,out var error),error);}
-        finally{Marshal.FreeCoTaskMem(path);}
+        byte[] bytes=File.ReadAllBytes(model);modelBuffer=GCHandle.Alloc(bytes,GCHandleType.Pinned);
+        try{var options=new Options {Base=new BaseOptions{Buffer=modelBuffer.AddrOfPinnedObject(),Size=checked((uint)bytes.Length)},Mode=2,Faces=1,Detection=.5f,Presence=.5f,Tracking=.5f,Blendshapes=1,Matrices=1};Check(MpFaceLandmarkerCreate(ref options,out handle,out var error),error);}
+        catch{if(modelBuffer.IsAllocated)modelBuffer.Free();throw;}
     }
     internal static void CheckHash(string path,string expected){using var stream=File.OpenRead(path);if(Convert.ToHexString(SHA256.HashData(stream))!=expected)throw new InvalidOperationException("Inference asset hash mismatch");}
     internal FaceObservation Detect(byte[] bgrx,int width,int height,long milliseconds)
@@ -36,7 +37,7 @@ internal sealed class FaceDetector : IDisposable
         }finally{if(called)MpFaceLandmarkerCloseResult(ref result);if(image!=0)MpImageFree(image);}
     }
     internal static void Check(int status,nint error){try{if(status!=0)throw new InvalidOperationException(Marshal.PtrToStringUTF8(error)??("MediaPipe error "+status));}finally{if(error!=0)MpErrorFree(error);}}
-    public void Dispose(){if(handle==0)return;var value=handle;handle=0;Check(MpFaceLandmarkerClose(value,out var error),error);}
+    public void Dispose(){if(handle==0)return;var value=handle;handle=0;try{Check(MpFaceLandmarkerClose(value,out var error),error);}finally{if(modelBuffer.IsAllocated)modelBuffer.Free();}}
     // ABI from official 0.10.35 wheel ctypes definitions, not mutable master headers.
 #pragma warning disable CS0649
     [StructLayout(LayoutKind.Sequential)] internal struct BaseOptions {public nint Buffer;public uint Size;public nint Path;public int Delegate,Environment,System;public nint Version,Certificates;}

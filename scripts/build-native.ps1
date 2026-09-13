@@ -1,10 +1,12 @@
-param([string]$Configuration = "Release", [switch]$WithSpout)
+param([string]$Configuration = "Release", [switch]$WithSpout, [string]$VisualStudioProduct = "*")
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
-$vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+$vs = & $vswhere -latest -products $VisualStudioProduct -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
 if (!$vs) { throw 'Visual Studio C++ Build Tools and Windows SDK are required.' }
 $vcvars = Join-Path $vs 'VC/Auxiliary/Build/vcvars64.bat'
+$vsInfo = (& $vswhere -latest -products $VisualStudioProduct -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -format json | ConvertFrom-Json)[0]
+$toolsVersion = (Get-Content (Join-Path $vs "VC/Auxiliary/Build/Microsoft.VCToolsVersion.default.txt") -Raw).Trim()
 $source = Join-Path $root 'native/Connect.Graphics/Graphics.cpp'
 $cameraSource = Join-Path $root 'native/Connect.Camera/Camera.cpp'
 $out = Join-Path $root 'native/artifacts'
@@ -23,11 +25,11 @@ if ($WithSpout) {
 Push-Location $out
 try {
     $batch = Join-Path $out 'build-graphics.cmd'
-    [IO.File]::WriteAllLines($batch, @("@echo off", "chcp 65001 >nul", "call `"$vcvars`" >nul", "if errorlevel 1 exit /b 1", "cl.exe /nologo /LD /EHsc /O2 /std:c++17 /W4 $spoutFlags `"$source`" /link d3d11.lib dxgi.lib d3dcompiler.lib user32.lib gdi32.lib shell32.lib advapi32.lib comdlg32.lib comctl32.lib ole32.lib /OUT:Connect.Graphics.dll", "exit /b %errorlevel%"), [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllLines($batch, @("@echo off", "chcp 65001 >nul", "call `"$vcvars`" >nul", "if errorlevel 1 exit /b 1", "cl.exe /nologo /LD /MT /EHsc /O2 /std:c++17 /W4 $spoutFlags `"$source`" /link d3d11.lib dxgi.lib d3dcompiler.lib user32.lib gdi32.lib shell32.lib advapi32.lib comdlg32.lib comctl32.lib ole32.lib /OUT:Connect.Graphics.dll", "exit /b %errorlevel%"), [Text.UTF8Encoding]::new($false))
     & cmd.exe /d /c $batch
     if ($LASTEXITCODE -ne 0) { throw 'Native graphics build failed' }
     $cameraBatch = Join-Path $out 'build-camera.cmd'
-    [IO.File]::WriteAllLines($cameraBatch, @("@echo off", "chcp 65001 >nul", "call `"$vcvars`" >nul", "if errorlevel 1 exit /b 1", "cl.exe /nologo /LD /EHsc /O2 /std:c++17 /W4 `"$cameraSource`" /link mf.lib mfplat.lib mfreadwrite.lib mfuuid.lib ole32.lib /OUT:Connect.Camera.dll", "exit /b %errorlevel%"), [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllLines($cameraBatch, @("@echo off", "chcp 65001 >nul", "call `"$vcvars`" >nul", "if errorlevel 1 exit /b 1", "cl.exe /nologo /LD /MT /EHsc /O2 /std:c++17 /W4 `"$cameraSource`" /link mf.lib mfplat.lib mfreadwrite.lib mfuuid.lib ole32.lib /OUT:Connect.Camera.dll", "exit /b %errorlevel%"), [Text.UTF8Encoding]::new($false))
     & cmd.exe /d /c $cameraBatch
     if ($LASTEXITCODE -ne 0) { throw 'Native camera build failed' }
 } finally { Pop-Location }
@@ -37,5 +39,7 @@ Copy-Item -LiteralPath (Join-Path $out 'Connect.Graphics.dll') -Destination (Joi
 
 
 Copy-Item -LiteralPath (Join-Path $out 'Connect.Camera.dll') -Destination (Join-Path $root "native/Connect.Desktop/bin/$Configuration/net8.0-windows/Connect.Camera.dll")
+
+@{productId=$vsInfo.productId;installationVersion=$vsInfo.installationVersion;toolsVersion=$toolsVersion;runtimeLinkage="MT"} | ConvertTo-Json | Set-Content (Join-Path $out "TOOLCHAIN.json")
 
 if($WithSpout){Copy-Item -LiteralPath (Join-Path $sdk 'LICENSE') -Destination (Join-Path $root "native/Connect.Desktop/bin/$Configuration/net8.0-windows/SPOUT-LICENSE.txt")}

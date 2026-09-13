@@ -20,9 +20,23 @@
 
 任意の上半身追従で肩から身体の左右回転と傾きを推定します。身体の上下傾きは肩と腰から推定します。腕・全身追従は未対応です。表情ホットキー、外部表情API、母音推定は未実装です。
 
+## 配布ZIPについて
+
+ビルド済みZIPは現在ローカルで検証中の候補版で、GitHub Releaseにはまだ公開していません。候補ZIPを利用する場合は、全体を展開して次の手順で準備します。
+
+1. Microsoft公式の.NET 8 Desktop RuntimeとASP.NET Core 8 Runtime（両方x64）を導入します。
+2. 再生のみなら `Setup-Runtime.cmd`、カメラ追従も使うなら `Setup-Tracking.cmd` を実行します。後者はV8と顔・上半身推論をまとめて導入します。
+3. `Connect.Desktop.exe` を起動し、画像込みモデルJSONを開きます。
+
+初回はネット接続が必要です。V8ネイティブDLL・推論DLL・推論モデルはZIPに含めず、固定した公式配布元から取得してSHA-256を検証します。ZIP利用者にVisual Studio・SDK・Pythonは不要です。
+
+[詳しい導入手順](docs/PORTABLE.md) · [配布バイナリの第三者情報](docs/BINARY-NOTICES.md)
+
+利用・再配布の前に[Microsoftランタイムの条件](licenses/MICROSOFT-RUNTIME-TERMS.md)を確認し、同意してください。これはネイティブDLL内のMicrosoftランタイム部分に適用され、Connect自身のApache-2.0ライセンスを変更しません。
+
 ## ビルド・起動
 
-Windows x64、.NET 8 SDK、Visual Studio 2022 C++ Build ToolsとWindows SDKを用意します。[詳細](docs/BUILD.md)。PowerShellでリポジトリ直下から実行します。
+Windows x64、.NET 8 SDK、利用条件を満たすVisual Studio 2022 Community等のC++開発環境とWindows SDKを用意します。[詳細](docs/BUILD.md)。PowerShellでリポジトリ直下から実行します。
 
 ```powershell
 powershell -NoProfile -File scripts/build-native.ps1
@@ -43,7 +57,7 @@ powershell -NoProfile -File scripts/setup-native-inference.ps1
 
 スロットは `%LOCALAPPDATA%\StandRigConnect\model-slots` に手動保存します。モデルのコピーと校正・調整を保存し、カメラ開始・OBS送信・モーション・待機選択は保存しません。過去のデータが残るため容量は増加します。削除・履歴整理UIは未実装です。
 
-合成順は通常入力 → 待機 → トラッキング → 読込モーション → API上書き。後段が指定した項目を優先します。待機は目・口に触れません。呼吸用パラメータがなければ小さな体の上下傾きを使い、それもなければ呼吸動作は出ません。
+合成順は通常入力 → トラッキング → 待機の加算 → 読込モーション → API上書き。後段が指定した項目を優先します。待機は目・口に触れません。呼吸用パラメータがモデルに結び付いていない場合は、足元を基準にモデルをわずかに上下伸縮させます。
 
 ## 外部からパラメータを操作する
 

@@ -20,9 +20,23 @@ This is the **0.1.0 development preview** source release, not a finished install
 
 Optional upper-body tracking estimates shoulder yaw and roll. Body pitch uses shoulders and hips; arms and full-body tracking are not supported. Expression hotkeys, an external expression API and vowel recognition are not implemented.
 
+## Binary ZIP candidate
+
+The prebuilt ZIP is currently a locally tested candidate; it has not been published as a GitHub Release. If you have the candidate, extract the entire ZIP and:
+
+1. Install Microsoft's .NET 8 Desktop Runtime and ASP.NET Core 8 Runtime, both x64.
+2. Run `Setup-Runtime.cmd` for playback, or `Setup-Tracking.cmd` for camera tracking. The latter installs V8 plus face and upper-body inference.
+3. Start `Connect.Desktop.exe` and open model JSON with embedded images.
+
+Initial setup needs internet access. Native V8, inference DLLs and inference models are excluded from the ZIP, downloaded from pinned official sources and verified with SHA-256. ZIP users do not need Visual Studio, an SDK or Python.
+
+[Setup details](docs/PORTABLE.md) · [Binary third-party notices](docs/BINARY-NOTICES.md)
+
+Before use or redistribution, read and accept the [Microsoft runtime conditions](licenses/MICROSOFT-RUNTIME-TERMS.md). They cover only Microsoft runtime portions inside the native DLLs; Connect's own code remains Apache-2.0.
+
 ## Build and run
 
-Install Windows x64, .NET 8 SDK, Visual Studio 2022 C++ Build Tools and a Windows SDK. See [details](docs/BUILD.md). Run PowerShell in the repository root:
+Install Windows x64, .NET 8 SDK, an appropriately licensed Visual Studio 2022 installation (such as Community for eligible users) with C++ tools and a Windows SDK. See [details](docs/BUILD.md). Run PowerShell in the repository root:
 
 ```powershell
 powershell -NoProfile -File scripts/build-native.ps1
@@ -43,7 +57,7 @@ The generated evaluator is included; ordinary builds and usage do not need Node.
 
 Slots are saved manually under `%LOCALAPPDATA%\StandRigConnect\model-slots`. They store the model copy, calibration and controls, but not camera startup, OBS output, motion playback or idle selection. Old payloads are retained and storage grows; cleanup/history UI is not implemented.
 
-Evaluation order is base input → idle → tracking → loaded motion → API overrides. Later layers override only supplied parameters. Idle leaves eyes and mouth alone. Without a breathing parameter, it uses tiny body-pitch movement; without either, there is no breathing movement.
+Evaluation order is base input → tracking → additive idle → loaded motion → API overrides. Later layers override only supplied parameters. Idle leaves eyes and mouth alone. When no breathing parameter is bound to the model, a small vertical stretch anchored at the stage bottom provides breathing movement.
 
 ## Control parameters externally
 

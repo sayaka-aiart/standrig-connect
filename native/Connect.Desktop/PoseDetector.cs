@@ -6,13 +6,14 @@ internal sealed class PoseDetector : IDisposable
 {
     internal const string ModelHash="59929E1D1EE95287735DDD833B19CF4AC46D29BC7AFDDBBF6753C459690D574A";
     private nint handle;
+    private GCHandle modelBuffer;
     private byte[] rgb=Array.Empty<byte>();
     internal PoseDetector(){
         string model=Path.Combine(AppContext.BaseDirectory,"pose_landmarker_lite.task");
         FaceDetector.CheckHash(model,ModelHash);
         FaceDetector.CheckHash(Path.Combine(AppContext.BaseDirectory,"libmediapipe.dll"),"AA8E6C1B618C30CD3A6AD584DEE1B2F2C99C3F3025D683BADA36E1566D9092B7");
-        nint path=Marshal.StringToCoTaskMemUTF8(model);
-        try{var options=new Options{Base=new FaceDetector.BaseOptions{Path=path},Mode=2,Poses=1,Detection=.5f,Presence=.5f,Tracking=.5f};FaceDetector.Check(MpPoseLandmarkerCreate(ref options,out handle,out var error),error);}finally{Marshal.FreeCoTaskMem(path);}
+        byte[] bytes=File.ReadAllBytes(model);modelBuffer=GCHandle.Alloc(bytes,GCHandleType.Pinned);
+        try{var options=new Options{Base=new FaceDetector.BaseOptions{Buffer=modelBuffer.AddrOfPinnedObject(),Size=checked((uint)bytes.Length)},Mode=2,Poses=1,Detection=.5f,Presence=.5f,Tracking=.5f};FaceDetector.Check(MpPoseLandmarkerCreate(ref options,out handle,out var error),error);}catch{if(modelBuffer.IsAllocated)modelBuffer.Free();throw;}
     }
     internal (BodyPoint? Left,BodyPoint? Right,BodyPoint? LeftHip,BodyPoint? RightHip) Detect(byte[] pixels,int width,int height,long milliseconds){
         int count=checked(width*height);if(rgb.Length!=count*3)rgb=new byte[count*3];
@@ -29,7 +30,7 @@ internal sealed class PoseDetector : IDisposable
             return(Read(11),Read(12),Read(23),Read(24));
         }finally{if(called)MpPoseLandmarkerCloseResult(ref result);if(image!=0)MpImageFree(image);}
     }
-    public void Dispose(){if(handle==0)return;var old=handle;handle=0;FaceDetector.Check(MpPoseLandmarkerClose(old,out var error),error);}
+    public void Dispose(){if(handle==0)return;var old=handle;handle=0;try{FaceDetector.Check(MpPoseLandmarkerClose(old,out var error),error);}finally{if(modelBuffer.IsAllocated)modelBuffer.Free();}}
 #pragma warning disable CS0649
     [StructLayout(LayoutKind.Sequential)] private struct Options {public FaceDetector.BaseOptions Base;public int Mode,Poses;public float Detection,Presence,Tracking;public byte Masks;public nint Callback;}
     [StructLayout(LayoutKind.Sequential)] private struct Result {public nint Masks;public uint MaskCount;public nint Landmarks;public uint Count;public nint World;public uint WorldCount;}
