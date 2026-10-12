@@ -51,4 +51,6 @@ public sealed class ParameterControl
         }
     }
     public ParameterSnapshot Snapshot(){lock(gate){Expire();return new(session,definitions.Values.ToArray(),new(values),overrides.ToDictionary(p=>p.Key,p=>p.Value.Value));}}
+    public Dictionary<string,double> GetOverrides(string modelSession){lock(gate){if(session!=modelSession)return new();Expire();return overrides.ToDictionary(p=>p.Key,p=>p.Value.Value);}}
+    public void RecordInput(string modelSession,IReadOnlyDictionary<string,double> input){lock(gate){if(session!=modelSession)return;foreach(var id in definitions.Keys)if(input.TryGetValue(id,out var value))values[id]=value;}}
 }

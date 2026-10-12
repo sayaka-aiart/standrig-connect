@@ -15,3 +15,5 @@ jobs:
         run: ./scripts/build-native.ps1
       - name: Core tests
         run: dotnet run --project native/Connect.Tests -c Release
+      - name: Embedded V8 facial tests
+        run: dotnet run --project native/Connect.Evaluation.Tests -c Release -- --facial

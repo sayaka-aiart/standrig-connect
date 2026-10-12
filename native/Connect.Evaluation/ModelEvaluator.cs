@@ -47,6 +47,9 @@ public sealed class ModelEvaluator : IDisposable
         return (string)engine.Script.StandRigEvaluation.tick(requestJson);
     }
     public string Snapshot() { CheckThread(); return (string)engine.Script.StandRigEvaluation.snapshot(); }
+    public string FacialCatalog(){CheckThread();return (string)engine.Script.StandRigEvaluation.facialCatalog();}
+    public string FacialCommand(string json,double seconds){CheckThread();if(json.Length>32768)throw new ArgumentException("Facial request exceeds 32 KiB");return (string)engine.Script.StandRigEvaluation.facialCommand(json,seconds);}
+    public string FacialState(double seconds){CheckThread();return (string)engine.Script.StandRigEvaluation.facialState(seconds);}
     public string LoadMotion(string json){CheckThread();if(json.Length>4*1024*1024)throw new ArgumentException("Motion exceeds 4 MiB limit");return (string)engine.Script.StandRigEvaluation.loadMotion(json);}
     public string SampleMotion(double seconds){CheckThread();return (string)engine.Script.StandRigEvaluation.motionValues(seconds);}
     public string LoadTrackingProfile(string json,bool preserveState=false){CheckThread();if(json.Length>1024*1024)throw new ArgumentException("Tracking profile exceeds 1 MiB");return (string)engine.Script.StandRigEvaluation.loadTrackingProfile(json,preserveState);}

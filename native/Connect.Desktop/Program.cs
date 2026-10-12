@@ -8,6 +8,7 @@ internal static class Program
     [STAThread]
     static void Main(string[] args)
     {
+        if(args.Length==3&&args[0] is "--facial-render-test" or "--facial-spout-test"){ApplicationConfiguration.Initialize();FacialRenderChecks.Run(args[1],args[2],args[0]=="--facial-spout-test");return;}
         if(args.Length==3&&args[0]=="--idle-view-test"){ApplicationConfiguration.Initialize();OutputViewChecks.RunIdle(args[1],args[2]);return;}
         if(args.Length==3&&args[0]=="--output-view-test"){ApplicationConfiguration.Initialize();OutputViewChecks.Run(args[1],args[2]);return;}
         if(args.Length==2&&(args[0]=="--camera-worker"||args[0]=="--face-camera-worker")){Environment.ExitCode=Task.Run(()=>CameraCapture.RunWorker(int.Parse(args[1]),args[0]=="--face-camera-worker")).GetAwaiter().GetResult();return;}
@@ -218,6 +219,7 @@ internal sealed partial class MainWindow : Form
     private int demoEnabled;
     private int idlePreset;
     private readonly ParameterControl parameterControl=new();
+    internal readonly FacialControl Facial=new();
     private ParameterHttpServer? parameterServer;
     private int spoutEnabled;
     internal MotionPlayback? Motion;
@@ -403,13 +405,14 @@ internal sealed partial class MainWindow : Form
         spoutState.MaximumSize=new Size(520,0);
         Page("配信",Help("カメラ・トラッキング"),cameraRow,cameraState,captureRow,captureState,trackingControls,trackingState,Help("OBSへの出力"),outputControls,spoutState,Help("Spout2: OBSのSpout2ソースで StandRig Connect を選択。出力画面は非表示でも送信できます。\nゲームキャプチャ: Output — Model を選び透過を許可。出力画面を表示しておきます。"));
         Page("モーション",idleControls,Help("待機は小さな動きです。目・口は操作せず、トラッキングへ微動を加算します。呼吸リグがないモデルでは足元を基準に小さく縦へ伸縮します。"),demo,motionControls,motionState,transport,Help("モーションで指定した項目を優先します。一時停止は姿勢保持、停止で通常入力へ戻ります。"));
+        Page("表情・母音",CreateFacialControls());
         Page("状態",state,faceInputs);
         if(!testing){
             string sessionFile=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"StandRigConnect","api-session.json");
             string apiStatus;
-            try{parameterServer=new ParameterHttpServer(parameterControl,sessionFile);apiStatus="パラメータAPI: "+parameterServer.Url+"\n認証ファイル: "+sessionFile;}
-            catch(Exception ex){apiStatus="パラメータAPI起動失敗: "+ex.Message;}
-            Page("API",Help(apiStatus),Help("外部入力は指定項目のみを上書きし、期限切れ・解除で通常入力へ戻ります。認証ファイルは共有しないでください。手順: docs/PARAMETER-API.md"));
+            try{parameterServer=new ParameterHttpServer(parameterControl,sessionFile,facial:Facial);apiStatus="パラメータ・表情API: "+parameterServer.Url+"\n認証ファイル: "+sessionFile;}
+            catch(Exception ex){apiStatus="外部API起動失敗: "+ex.Message;}
+            Page("API",Help(apiStatus),Help("外部入力は指定項目のみを上書きし、期限切れ・解除で通常入力へ戻ります。認証ファイルは共有しないでください。表情・母音は選択・解除するまで継続。手順: docs/PARAMETER-API.md / docs/FACIAL-API.md"));
         }
         panel.Dispose();Controls.Add(tabs);Controls.Add(diagnostics);MainMenuStrip=diagnostics;diagnostics.Enabled=!testing;
         var menu = new ContextMenuStrip(); menu.Items.Add("操作画面を表示", null, (_, _) => { Show(); WindowState = FormWindowState.Normal; Activate(); });
@@ -476,7 +479,7 @@ internal sealed partial class MainWindow : Form
         var playback=new MotionPlayback();Motion=playback;
         var tracking=new TrackingPlayback();Tracking=tracking;resetTrackingSliders?.Invoke();trackingOn.Checked=!testing;tracking.SetEnabled(!testing);
         if(controls!=null){restoreTrackingControls?.Invoke(controls);trackingOn.Checked=controls.Enabled;tracking.SetEnabled(controls.Enabled);}
-        Engine.Start(()=>new ModelRenderPipeline(path,window,()=>Volatile.Read(ref presentationEnabled)==1,text=>Volatile.Write(ref mode,text),capture,physics,benchmarkMotion,()=>Volatile.Read(ref demoEnabled)==1,playback,tracking,()=>Volatile.Read(ref spoutEnabled)==1,autoTracking:!testing,modelJson:modelJson,initialTrackingProfile:initialTrackingProfile,modelReady:json=>Volatile.Write(ref loadedModelJson,json),idlePreset:()=> (IdlePreset)Volatile.Read(ref idlePreset),parameterControl:parameterControl,outputView:()=>Volatile.Read(ref outputView)));
+        Engine.Start(()=>new ModelRenderPipeline(path,window,()=>Volatile.Read(ref presentationEnabled)==1,text=>Volatile.Write(ref mode,text),capture,physics,benchmarkMotion,()=>Volatile.Read(ref demoEnabled)==1,playback,tracking,()=>Volatile.Read(ref spoutEnabled)==1,autoTracking:!testing,modelJson:modelJson,initialTrackingProfile:initialTrackingProfile,modelReady:json=>Volatile.Write(ref loadedModelJson,json),idlePreset:()=> (IdlePreset)Volatile.Read(ref idlePreset),parameterControl:parameterControl,outputView:()=>Volatile.Read(ref outputView),facialControl:Facial));
     }
     private void EnsureOutput()
     {

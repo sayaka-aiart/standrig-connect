@@ -518,5 +518,37 @@
   {
     "source": "licenses/MICROSOFT-RUNTIME-TERMS.md",
     "target": "licenses/MICROSOFT-RUNTIME-TERMS.md"
+  },
+  {
+    "source": "docs/FACIAL-API.md",
+    "target": "docs/FACIAL-API.md"
+  },
+  {
+    "source": "native/Connect.Core/FacialControl.cs",
+    "target": "native/Connect.Core/FacialControl.cs"
+  },
+  {
+    "source": "native/Connect.Desktop/FacialPanel.cs",
+    "target": "native/Connect.Desktop/FacialPanel.cs"
+  },
+  {
+    "source": "native/Connect.Desktop/FacialRenderChecks.cs",
+    "target": "native/Connect.Desktop/FacialRenderChecks.cs"
+  },
+  {
+    "source": "native/Connect.Evaluation.Tests/FacialChecks.cs",
+    "target": "native/Connect.Evaluation.Tests/FacialChecks.cs"
+  },
+  {
+    "source": "native/Connect.Tests/FacialApiChecks.cs",
+    "target": "native/Connect.Tests/FacialApiChecks.cs"
+  },
+  {
+    "source": "scripts/evaluation/facial-fixture.json",
+    "target": "scripts/evaluation/facial-fixture.json"
+  },
+  {
+    "source": "scripts/evaluation/test-facial.mjs",
+    "target": "scripts/evaluation/test-facial.mjs"
   }
 ]

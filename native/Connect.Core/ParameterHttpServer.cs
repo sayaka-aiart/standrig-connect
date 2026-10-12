@@ -13,13 +13,14 @@ public sealed class ParameterHttpServer : IDisposable
     private readonly WebApplication application;
     private readonly CancellationTokenSource stop=new();
     private readonly ParameterControl control;
+    private readonly FacialControl? facial;
     private readonly string token=Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     private readonly string sessionFile,sessionContent;
     private static readonly JsonSerializerOptions Json=new(){PropertyNamingPolicy=JsonNamingPolicy.CamelCase};
     public string Url {get;}
-    public ParameterHttpServer(ParameterControl control,string sessionFile,int port=22036)
+    public ParameterHttpServer(ParameterControl control,string sessionFile,int port=22036,FacialControl? facial=null)
     {
-        this.control=control;this.sessionFile=sessionFile;
+        this.control=control;this.sessionFile=sessionFile;this.facial=facial;
         if(port<1||port>65535)throw new ArgumentOutOfRangeException(nameof(port));
         Url=$"http://127.0.0.1:{port}";
         var builder=WebApplication.CreateSlimBuilder(new WebApplicationOptions{Args=Array.Empty<string>()});
@@ -47,13 +48,20 @@ public sealed class ParameterHttpServer : IDisposable
             if(!CryptographicOperations.FixedTimeEquals(supplied,expected)){await Reply(c,401,new{error="Bearer token required"});return;}
             string route=request.Path.Value??"";
             if(request.Method=="GET"&&route=="/api/v1/parameters"){await Reply(c,200,control.Snapshot());return;}
-            if(request.Method!="POST"||route is not ("/api/v1/parameters/set" or "/api/v1/parameters/clear")){await Reply(c,404,new{error="Unknown route or method"});return;}
+            if(request.Method=="GET"&&route=="/api/v1/facial"&&facial!=null){await Reply(c,200,facial.Snapshot());return;}
+            if(request.Method!="POST"||route is not ("/api/v1/parameters/set" or "/api/v1/parameters/clear" or "/api/v1/facial")||route=="/api/v1/facial"&&facial==null){await Reply(c,404,new{error="Unknown route or method"});return;}
             if(request.ContentType?.Split(';')[0].Trim()!="application/json"){await Reply(c,415,new{error="application/json required"});return;}
             if(request.ContentLength>32768){await Reply(c,413,new{error="Body exceeds 32 KiB"});return;}
             using var deadline=CancellationTokenSource.CreateLinkedTokenSource(stop.Token);deadline.CancelAfter(TimeSpan.FromSeconds(2));
             using var bytes=new MemoryStream();var buffer=new byte[4096];
             while(true){int n=await request.Body.ReadAsync(buffer,deadline.Token);if(n==0)break;if(bytes.Length+n>32768){await Reply(c,413,new{error="Body exceeds 32 KiB"});return;}bytes.Write(buffer,0,n);}
             using var doc=JsonDocument.Parse(bytes.ToArray(),new JsonDocumentOptions{MaxDepth=8});var root=doc.RootElement;
+            if(route=="/api/v1/facial"){
+                Fields(root,"modelSession","command");
+                string session=root.GetProperty("modelSession").GetString()??throw new ArgumentException("modelSession required");
+                long sequence=facial!.Submit(session,root.GetProperty("command").GetRawText());
+                await Reply(c,202,new{accepted=true,modelSession=session,sequence});return;
+            }
             Fields(root,route.EndsWith("/set")?new[]{"modelSession","values","ttlMs"}:new[]{"modelSession","ids"});
             string modelSession=root.GetProperty("modelSession").GetString()??throw new ArgumentException("modelSession required");
             if(route.EndsWith("/set")){
@@ -69,6 +77,7 @@ public sealed class ParameterHttpServer : IDisposable
         catch(BadHttpRequestException e){code=e.StatusCode;response=new{error="Invalid HTTP request"};}
         catch(OperationCanceledException){code=408;response=new{error="Request timed out"};}
         catch(ParameterSessionException e){code=409;response=new{error=e.Message};}
+        catch(FacialBusyException e){code=429;response=new{error=e.Message};}
         catch(Exception e) when(e is InvalidOperationException or ArgumentException or JsonException or KeyNotFoundException or FormatException or OverflowException){code=400;response=new{error="Invalid request",detail=e.Message};}
         await Reply(c,code,response);
     }

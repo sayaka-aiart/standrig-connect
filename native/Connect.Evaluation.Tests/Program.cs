@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Diagnostics;
 using StandRig.Connect.Evaluation;
+if(args.Length==1&&args[0]=="--facial"){FacialChecks.Run();return;}
 if(args.Length>0&&args[0]=="--pitch-profile"){
  var old="""{"name":"Connect standard","tracking":{"mappings":[{"source":"facePitch","parameter":"ParamAngleY","scale":22.5},{"source":"bodyPitch","parameter":"ParamBodyAngleY","scale":8}]}}""";
  string upgraded=DefaultTracking.UpgradeProfile(old);

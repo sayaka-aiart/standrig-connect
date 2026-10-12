@@ -30,7 +30,7 @@ Use the modelSession from GET and real parameter IDs/ranges from parameters:
 
 Requires application/json. Values must be finite numbers within each parameter's declared range; unknown IDs, duplicate keys, unknown fields and invalid batches are rejected without partial application. 1–512 values per request; maximum request size 32KiB. ttlMs is an integer from 100 to 10000, default 1000. Renew before expiry for continuous input (for example, every 100ms with ttlMs=1000). This API does not permanently edit the rig or saved slot.
 
-合成順は通常入力 → 待機 → カメラ追従 → 読込モーション → API上書き → モデル評価・物理です。APIが指定した項目だけを優先し、未指定の項目は追従を継続します。期限切れ・解除後はその時点の通常入力へ戻ります。値は直接切り替わり、API独自のフェードはありません。モデル切替・描画停止で上書きを破棄します。モデルごとのセッションIDが変わるため、切替後にGETし直してください。
+合成順は通常入力 → カメラ追従 → 待機の加算 → 読込モーション → 表情 → 母音 → 数値API上書き → 物理 → 描画です。APIが指定した項目だけを優先し、未指定の項目は追従を継続します。期限切れ・解除後は、選択中の表情・母音も適用した現在の入力へ戻ります。値は直接切り替わり、API独自のフェードはありません。モデル切替・描画停止で上書きを破棄します。モデルごとのセッションIDが変わるため、切替後にGETし直してください。
 
 Each parameter has its own lease. Repeated set refreshes only supplied parameters. Multiple clients share one override layer: the last accepted write to a parameter wins, and any authenticated client can clear it. There is no per-client ownership, sequence ordering, expression state, motion control or WebSocket endpoint in this first version. Await writes sequentially if ordering matters. A disconnected client cannot leave overrides active beyond the maximum ten-second lease.
 
@@ -76,4 +76,4 @@ finally:
     call("/clear", {"modelSession": model, "ids": [p["id"]]})
 ```
 
-Stream Deck or other native tools can call the same endpoints through a script or HTTP action capable of reading credentials and modelSession. This is a parameter API, not yet a ready-made Stream Deck plugin or expression-hotkey feature.
+Stream Deck or other native tools can call the same endpoints through a script or HTTP action capable of reading credentials and modelSession. Registered expression/viseme selection uses the separate [facial endpoints](FACIAL-API.md). Numeric overrides have priority over facial layers; expiry restores the current facial-composed input. No ready-made Stream Deck plugin or built-in global expression hotkey configuration is included.

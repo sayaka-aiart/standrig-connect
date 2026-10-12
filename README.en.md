@@ -9,6 +9,7 @@ This is the **0.1.0 development preview** source release, not a finished install
 ## Features
 
 - [External parameter API](docs/PARAMETER-API.md): discover, temporarily override and clear values over local HTTP.
+- [Expressions, visemes and their external API](docs/FACIAL-API.md#english): select, mix and clear presets authored in StandRig.
 - Embedded-image model JSON loading and Direct3D 11 rendering.
 - Camera tracking for head orientation, eyelids, gaze and mouth; mirrored by default.
 - Gain, inversion, smoothing, eye closure threshold and neutral calibration.
@@ -18,7 +19,7 @@ This is the **0.1.0 development preview** source release, not a finished install
 - OBS Game Capture / Window Capture and optional Spout2 output.
 - Processing continues with the control window minimized or in the tray.
 
-Optional upper-body tracking estimates shoulder yaw and roll. Body pitch uses shoulders and hips; arms and full-body tracking are not supported. Expression hotkeys, an external expression API and vowel recognition are not implemented.
+Optional upper-body tracking estimates shoulder yaw and roll. Body pitch uses shoulders and hips; arms and full-body tracking are not supported. Built-in expression hotkeys and audio vowel recognition are not implemented. External scripts can use the facial API.
 
 ## Binary ZIP candidate
 
@@ -57,18 +58,27 @@ Embedded-image models use `.srig` (JSON content). Existing embedded-image `.json
 3. In Streaming (`配信`), select and start the camera, enable tracking, calibrate and adjust as needed.
 4. Save a slot in Model. Use `スロットを使う` to restore it next time.
 5. Select an idle preset or load a motion in `モーション`.
+6. For a model exported with registered facial presets, select expressions/vowels in `表情・母音`. Expression strength and layer-specific clear are available.
 
-Slots are saved manually under `%LOCALAPPDATA%\StandRigConnect\model-slots`. They store the model copy, calibration and controls, but not camera startup, OBS output, motion playback or idle selection. Old payloads are retained and storage grows; cleanup/history UI is not implemented.
+Slots are saved manually under `%LOCALAPPDATA%\StandRigConnect\model-slots`. They store the model copy, calibration and controls, including its facial catalog, but not camera startup, OBS output, motion playback, idle selection or current expression/viseme selections. Old payloads are retained and storage grows; cleanup/history UI is not implemented.
 
-Evaluation order is base input → tracking → additive idle → loaded motion → API overrides. Later layers override only supplied parameters. Idle leaves eyes and mouth alone. When no breathing parameter is bound to the model, a small vertical stretch anchored at the stage bottom provides breathing movement.
+Evaluation order is base input → tracking → additive idle → loaded motion → expressions → visemes → numeric API overrides → physics → rendering. Later layers override only supplied parameters. Idle leaves eyes and mouth alone. When no breathing parameter is bound to the model, a small vertical stretch anchored at the stage bottom provides breathing movement.
 
 ## Control parameters externally
 
 Connect exposes its external parameter API at `http://127.0.0.1:22036`: discover parameter IDs and ranges, temporarily override values, and clear selected or all overrides. AI scripts and other tools can call it directly without running StandRig. Credentials are stored in `%LOCALAPPDATA%\StandRigConnect\api-session.json`; Connect's API tab shows the location. Never share or commit this file.
 
-Overrides affect only supplied parameters and expire after one second by default (configurable from 100 to 10000ms), restoring ordinary input. Renew before expiry for continuous control. Retrieve a new model session ID after switching models. Stream Deck integration can use scripts or actions supporting HTTP calls; a dedicated plugin and expression-switching API are not implemented.
+Overrides affect only supplied parameters and expire after one second by default (configurable from 100 to 10000ms), restoring ordinary input. Renew before expiry for continuous control. Retrieve a new model session ID after switching models. Stream Deck integration can use scripts or actions supporting HTTP calls; a dedicated plugin and built-in hotkey configuration are not implemented.
 
 [Request formats and Python example](docs/PARAMETER-API.md). This API belongs to Connect and does not persistently edit model files.
+
+## Expressions and visemes
+
+Register expressions and A/I/U/E/O/Silence mouth poses in StandRig, export an embedded-image `.srig`, and load it in Connect. The `表情・母音` tab selects registered entries, adjusts expression strength and clears individual layers. Registration/editing and Live2D `.exp3.json` import/export belong to StandRig.
+
+Facial layers coexist with camera tracking, idle and motion. Clear restores current live input; model switch/render stop releases selection. Processing continues while minimized/in the tray, and the composed image goes to OBS/Spout2. No audio analyzer is included.
+
+**GET / POST `/api/v1/facial`** discovers presets/state, selects expressions, selects/mixes vowels and clears layers. It shares parameter API authentication and model sessions. POST returns 202 for queued acceptance; GET reports application on the renderer thread. Facial selection has no TTL and persists until cleared. See [formats and Python example](docs/FACIAL-API.md).
 
 ## Output resolution and framing
 

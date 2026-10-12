@@ -11,6 +11,12 @@ import { initializeTracking } from './tracking-session';
 export {loadTrackingProfile,mapTracking,resetTracking,calibrateTracking,exportTrackingProfile} from './tracking-session';
 export {convertFace} from './face-input';
 import { parseMotion,validateMotionParameters,sampleMotion } from '@core/motion';
+import { FacialController } from '@facial-runtime';
+let facial:FacialController|undefined;
+export function facialCatalog(){if(!facial)throw Error('no model');return JSON.stringify(facial.catalog());}
+export function facialCommand(json:string,seconds:number){if(!facial)throw Error('no model');facialTime(seconds);return JSON.stringify(facial.command(JSON.parse(json),seconds*1000));}
+export function facialState(seconds:number){if(!facial)throw Error('no model');facialTime(seconds);return JSON.stringify(facial.snapshot(seconds*1000));}
+function facialTime(seconds:number){if(!Number.isFinite(seconds)||seconds<0||seconds>1e9)throw Error('invalid facial time');}
 let motion:any;
 export function loadMotion(json:string){
  if(!rig)throw Error('load a model first');
@@ -23,7 +29,7 @@ export function motionValues(time:number){
  return JSON.stringify(sampleMotion(motion,time));
 }
 export { effectBuffer,registerEffect,renderEffect,clearEffects } from './image-effects';
-let rig:any, definitions:Map<string,any>, physics=new Map(), lastTime:number|undefined,lastPacket:any;
+let rig:any, definitions:Map<string,any>, physics=new Map(), lastTime:number|undefined,lastPacket:any,lastInputValues:any;
 let samples=0,coreMs=0,geometryMs=0,samplingMs=0,projectionMs=0,validationMs=0;
 let meshCache=new Map<string,any>();
 export function profile(){return JSON.stringify({samples,coreMs:coreMs/Math.max(1,samples-10),geometryMs:geometryMs/Math.max(1,samples-10),samplingMs:samplingMs/Math.max(1,samples-10),projectionMs:projectionMs/Math.max(1,samples-10),validationMs:validationMs/Math.max(1,samples-10),clock:'Date.now milliseconds; approximate'});}
@@ -33,12 +39,13 @@ export function load(json:string){
  const parameterIds=new Set();for(const d of defs){if(parameterIds.has(d.id)||![d.min,d.max,d.default].every(Number.isFinite)||d.min>d.max||d.default<d.min||d.default>d.max)throw Error('invalid parameter definition');parameterIds.add(d.id);}
  if(!Number.isFinite(next.stage.width)||!Number.isFinite(next.stage.height)||next.stage.width<=0||next.stage.height<=0)throw Error('invalid stage');
  const ids=new Set();for(const part of next.parts){if(ids.has(part.id))throw Error('duplicate part');ids.add(part.id);}
+ const nextFacial=new FacialController(next);
  // Complete parse/validation before replacing the current evaluation session.
- rig=next;motion=undefined;definitions=new Map(defs.map(d=>[d.id,d]));physics=new Map();lastTime=undefined;lastPacket=undefined;meshCache.clear();samples=coreMs=geometryMs=samplingMs=projectionMs=validationMs=0;
+ rig=next;facial=nextFacial;motion=undefined;definitions=new Map(defs.map(d=>[d.id,d]));physics=new Map();lastTime=undefined;lastPacket=undefined;meshCache.clear();samples=coreMs=geometryMs=samplingMs=projectionMs=validationMs=0;
  initializeTracking(defs);
  return JSON.stringify({contract:1,name:rig.name,parts:rig.parts.length,parameters:defs,stage:rig.stage,rendererReady:false});
 }
-export function reset(){physics.clear();lastTime=undefined;lastPacket=undefined;}
+export function reset(){physics.clear();lastTime=undefined;lastPacket=undefined;facial?.reset();}
 export function evaluate(json:string){return advance(json,true);}
 export function tick(json:string){return advance(json,false);}
 export function snapshot(){if(!lastPacket)throw Error("no evaluated frame");return JSON.stringify(lastPacket);}
@@ -59,11 +66,11 @@ export function renderPacket(json:string){
   for(const v of vertices){vertexBuffer[vertexOffset++]=v.x;vertexBuffer[vertexOffset++]=v.y;vertexBuffer[vertexOffset++]=v.u;vertexBuffer[vertexOffset++]=v.v;}
   indexBuffer.set(triangles,indexOffset);indexOffset+=triangles.length;return record;
  });
- return JSON.stringify({contract:1,values:lastPacket.values,geometry:{...geometry,meshes}});
+ return JSON.stringify({contract:1,values:lastPacket.values,inputValues:lastInputValues,geometry:{...geometry,meshes}});
 }
 function advance(json:string,details:boolean,renderMode=false){
  if(!rig)throw Error('no model');
- const input=JSON.parse(json);if(!input||Array.isArray(input)||typeof input!=='object'||Object.keys(input).some(k=>!['time','values','matrix','physics'].includes(k)))throw Error('invalid request');
+ const input=JSON.parse(json);if(!input||Array.isArray(input)||typeof input!=='object'||Object.keys(input).some(k=>!['time','values','overrides','matrix','physics'].includes(k)))throw Error('invalid request');
  if(input.physics!==undefined&&typeof input.physics!=='boolean')throw Error('invalid physics flag');
  if(input.values!==undefined&&(!input.values||Array.isArray(input.values)||typeof input.values!=='object'))throw Error('invalid values');
  const time=input.time;
@@ -71,11 +78,14 @@ function advance(json:string,details:boolean,renderMode=false){
  if(lastTime!==undefined&&time<lastTime)throw Error('time must be monotonic; reset before seeking');
  const values={...defaultParameterValues(rig)};
  for(const [id,value] of Object.entries(input.values??{})){const d=definitions.get(id);if(!d||typeof value!=='number'||!Number.isFinite(value)||value<d.min||value>d.max)throw Error('invalid parameter '+id);values[id]=value;}
+ if(input.overrides!==undefined&&(!input.overrides||Array.isArray(input.overrides)||typeof input.overrides!=='object'))throw Error('invalid overrides');
+ for(const [id,value] of Object.entries(input.overrides??{})){const d=definitions.get(id);if(!d||typeof value!=='number'||!Number.isFinite(value)||value<d.min||value>d.max)throw Error('invalid override '+id);}
  const matrix=input.matrix??{a:1,b:0,c:0,d:1,e:0,f:0};
  for(const k of ['a','b','c','d','e','f'])if(!Number.isFinite(matrix[k]))throw Error('invalid matrix');
  const nextPhysics=new Map([...physics].map(([key,value])=>[key,{...value}]));
  const t0=Date.now();
- const frame=resolveRigFrame(rig,values,matrix,{physics:input.physics!==false,physicsState:nextPhysics,physicsTime:time,physicsDt:lastTime===undefined?1/60:Math.min(.05,Math.max(.001,time-lastTime))});
+ const composed={...facial!.evaluate(values,time*1000),...input.overrides};
+ const frame=resolveRigFrame(rig,composed,matrix,{physics:input.physics!==false,physicsState:nextPhysics,physicsTime:time,physicsDt:lastTime===undefined?1/60:Math.min(.05,Math.max(.001,time-lastTime))});
  const t1=Date.now();
  const assets=new Map(rig.assets.map((a:any)=>[a.id,a]));
  const parts=[...rig.parts].sort((a,b)=>a.drawOrder-b.drawOrder).map(part=>{
@@ -93,7 +103,7 @@ function advance(json:string,details:boolean,renderMode=false){
  if(renderMode){let vertices=0,indices=0;for(const mesh of geometry.meshes){vertices+=mesh.vertices.length;indices+=mesh.triangles.length;for(const v of mesh.vertices)if(![v.x,v.y,v.u,v.v].every(n=>Number.isFinite(Math.fround(n))))throw Error('render float overflow');}if(vertices>1000000||indices>3000000)throw Error('render packet budget exceeded');}
  const result=JSON.stringify(details?packet:{contract:1,time,parts:parts.length,rendererReady:false});
  if(++samples>10){coreMs+=t1-t0;geometryMs+=t2-t1;samplingMs+=projectedAt-t1;projectionMs+=t2-projectedAt;validationMs+=Date.now()-t2;}
- physics=nextPhysics;lastTime=time;lastPacket=packet;return result;
+ physics=nextPhysics;lastTime=time;lastPacket=packet;lastInputValues=composed;return result;
 }
 function cachedMesh(part:any,asset:any,values:any){
  let entry=meshCache.get(part.id);

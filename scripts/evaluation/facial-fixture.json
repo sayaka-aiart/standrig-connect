@@ -1,0 +1,20 @@
+{
+  "schemaVersion":"0.1.0", "name":"Synthetic facial fixture",
+  "stage":{"width":100,"height":100}, "assets":[], "parts":[], "deformers":[],
+  "parameters":[], "physics":{"enabled":false,"chains":[]},
+  "facialPresets":{
+    "version":1,
+    "expressions":[
+      {"id":"half","name":"Half eyes","document":{"Type":"Live2D Expression","FadeInTime":0.2,"FadeOutTime":0.2,"Parameters":[{"Id":"ParamEyeLOpen","Value":0.5,"Blend":"Multiply"},{"Id":"ParamEyeROpen","Value":0.5,"Blend":"Multiply"}]}},
+      {"id":"smile","name":"Smile","document":{"Type":"Live2D Expression","FadeInTime":0.2,"FadeOutTime":0.2,"Parameters":[{"Id":"ParamMouthSmile","Value":0.4,"Blend":"Add"},{"Id":"ParamMouthOpen","Value":0.1,"Blend":"Overwrite"}]}}
+    ],
+    "visemes":{"mode":"pose","fadeInTime":0.08,"fadeOutTime":0.08,"presets":[
+      {"id":"A","values":{"ParamMouthOpen":1,"ParamMouthForm":0}},
+      {"id":"I","values":{"ParamMouthOpen":0.3,"ParamMouthForm":0.8}},
+      {"id":"U","values":{"ParamMouthOpen":0.4,"ParamMouthForm":-0.8}},
+      {"id":"E","values":{"ParamMouthOpen":0.5,"ParamMouthForm":0.5}},
+      {"id":"O","values":{"ParamMouthOpen":0.7,"ParamMouthForm":-0.5}},
+      {"id":"Silence","values":{"ParamMouthOpen":0,"ParamMouthForm":0}}
+    ]}
+  }
+}
