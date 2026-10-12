@@ -11,7 +11,12 @@ Original StandRig Connect code is licensed under Apache-2.0 (LICENSE). User artw
 | MediaPipe 0.10.35 | Official PyPI wheel; Apache-2.0 license extracted by setup script | Setup script only; no DLL or inference model |
 | Face Landmarker task | Versioned official Google download; URL and SHA-256 pinned in setup script | Not included |
 | Spout2 | Pinned leadedge/Spout2 commit; BSD-2-Clause root license, source notices retained upstream | Setup/build integration only; no SDK or binary |
+| uLipSync MFCC stages | Fixed hecomi/uLipSync revision in licenses/LIPSYNC-PROVENANCE.json; MIT | Adapted managed MFCC/L2 scoring; licenses/ULIPSYNC-LICENSE.txt. No Unity or sample voice assets |
+| NAudio.Core / NAudio.Wasapi 2.2.1 | Fixed NuGet references and Desktop lockfile; MIT for NAudio code | Managed dependency DLLs in local builds/binary candidates; full MIT notice and embedded component notices retained |
+| NAudio embedded components | Cockos WDL and Ray Molenkamp source notices; SmbPitchShifter Wide Open License; G722 original author public-domain statement and CMU attribution | Full upstream notices in licenses/NAUDIO-THIRD-PARTY-NOTICES.txt, including unused code inside the complete DLLs |
 | Windows / .NET / MSVC | Platform dependencies with their own terms | Not bundled |
+
+Audio input uses Windows WASAPI through NAudio.Wasapi/Core 2.2.1. The app adapts selected uLipSync MFCC stages without Unity/Burst/Jobs dependencies. Original Connect audio capture, resampling, calibration/control and UI code remains Apache-2.0; adapted upstream portions retain their MIT attribution. The two complete NAudio assemblies include other credited code even though Connect does not call their pitch-shifter, G722 codec or WDL resampler. Preserve all supplied notices with binary distributions; do not relabel every embedded component as MIT. Fixed upstream paths, source hashes and changes are recorded in licenses/LIPSYNC-PROVENANCE.json. No upstream sample voice/calibration data, UnityChan assets or learned lipsync model is distributed.
 
 The native app embeds V8 for model evaluation; it does not require a browser or a Python installation. Connect.Camera uses Windows Media Foundation. Optional inference setup extracts the native C API from a wheel without running Python.
 

@@ -17,8 +17,10 @@ foreach($name in @('Connect.Graphics.dll','Connect.Camera.dll')){Copy-Item -Lite
 foreach($name in @('LICENSE','NOTICE')){Copy-Item -LiteralPath (Join-Path $root $name) -Destination $dest}
 Copy-Item -LiteralPath (Join-Path $root 'docs/BINARY-NOTICES.md') -Destination (Join-Path $dest 'THIRD_PARTY.md')
 $licenses=Join-Path $dest 'licenses'
-New-Item -ItemType Directory -Path $licenses | Out-Null
+New-Item -ItemType Directory -Force -Path $licenses | Out-Null
 Copy-Item -LiteralPath (Join-Path $root 'licenses/MICROSOFT-RUNTIME-TERMS.md') -Destination $licenses
+foreach($name in @('ULIPSYNC-LICENSE.txt','NAUDIO-LICENSE.txt','NAUDIO-THIRD-PARTY-NOTICES.txt','LIPSYNC-PROVENANCE.json')){Copy-Item -LiteralPath (Join-Path $root ('licenses/'+$name)) -Destination $licenses}
+Copy-Item -LiteralPath (Join-Path $root 'docs/LIPSYNC.md') -Destination $dest
 Copy-Item -LiteralPath (Join-Path $root 'native/Connect.Evaluation/THIRD_PARTY') -Destination (Join-Path $licenses 'NuGet') -Recurse
 foreach($name in @('STANDRIG-LICENSE','STANDRIG-NOTICE','ZOD-LICENSE','provenance.json')){Copy-Item -LiteralPath (Join-Path $root "native/Connect.Evaluation/Resources/$name") -Destination $licenses}
 if($WithSpout){

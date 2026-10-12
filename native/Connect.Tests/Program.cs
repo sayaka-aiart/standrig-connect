@@ -69,6 +69,7 @@ for(int i=0;i<600;i++){
 Check(true,"idle supported channels only and breath range");
 await ParameterApiChecks.Run();
 await FacialApiChecks.Run();
+LipSyncChecks.Run();
 var framing=new OutputView(1080,1920);
 var zoomed=framing.ZoomAt(1.5,.7,.3);
 Check(Math.Abs(zoomed.X+.2)<1e-9&&Math.Abs(zoomed.Y-.2)<1e-9,"cursor anchored zoom");

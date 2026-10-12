@@ -29,3 +29,7 @@ Extract the entire ZIP into a writable folder. Install both .NET 8 Desktop Runti
 For playback only, run `Setup-Runtime.cmd` to download the pinned native V8 DLL from official NuGet. Both package and DLL SHA-256 are checked. For camera tracking, run `Setup-Tracking.cmd` before launching the app. It first installs V8, then downloads pinned upstream MediaPipe inference files and verifies SHA-256; Python is not needed. Internet access is needed for setup. Upper-body tracking defaults to ON. Playback alone does not need inference setup.
 
 Start `Connect.Desktop.exe` and open a model JSON with embedded images. Camera capture starts only when requested in the UI. Preserve all DLLs and license files. This candidate is unsigned; do not disable system-wide security settings. User models and settings are not bundled.
+
+## Audio lip sync
+
+The candidate includes managed NAudio.Core/Wasapi dependencies and a Unity-free adapted uLipSync MFCC implementation. No additional voice model download is required. See LIPSYNC.md for calibration, routing and delay settings. Input/application are OFF on launch. Retain the complete licenses folder, including ULIPSYNC-LICENSE.txt, NAUDIO-LICENSE.txt, NAUDIO-THIRD-PARTY-NOTICES.txt and LIPSYNC-PROVENANCE.json.

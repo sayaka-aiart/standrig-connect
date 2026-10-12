@@ -25,6 +25,7 @@ internal sealed class ModelRenderPipeline : IFramePipeline
     private readonly bool breathBound;
     private readonly ParameterControl? parameterControl;
     private readonly FacialControl? facialControl;
+    private readonly StandRig.Connect.Audio.LipSyncControl? lipSync;
     private string? parameterSession;
     private readonly TrackingPlayback? tracking;
     private readonly Dictionary<string,(double Min,double Max)> ranges=new();
@@ -50,10 +51,10 @@ internal sealed class ModelRenderPipeline : IFramePipeline
     internal static int NonTransparentPixels;
     [StructLayout(LayoutKind.Sequential)] private struct Vertex { public float X,Y,U,V,Opacity; }
     [StructLayout(LayoutKind.Sequential)] private struct PathStamp { public float X,Y,RadiusX,RadiusY,R,G,B,A; }
-    internal ModelRenderPipeline(string path,nint window,Func<bool> present,Action<string> loaded,string? capture=null,bool physicsEnabled=true,bool benchmarkMotion=false,Func<bool>? demoEnabled=null,MotionPlayback? motion=null,TrackingPlayback? tracking=null,Func<bool>? spoutEnabled=null,bool autoTracking=false,string? modelJson=null,string? initialTrackingProfile=null,Action<string>? modelReady=null,Func<IdlePreset>? idlePreset=null,ParameterControl? parameterControl=null,Func<OutputView>? outputView=null,FacialControl? facialControl=null)
+    internal ModelRenderPipeline(string path,nint window,Func<bool> present,Action<string> loaded,string? capture=null,bool physicsEnabled=true,bool benchmarkMotion=false,Func<bool>? demoEnabled=null,MotionPlayback? motion=null,TrackingPlayback? tracking=null,Func<bool>? spoutEnabled=null,bool autoTracking=false,string? modelJson=null,string? initialTrackingProfile=null,Action<string>? modelReady=null,Func<IdlePreset>? idlePreset=null,ParameterControl? parameterControl=null,Func<OutputView>? outputView=null,FacialControl? facialControl=null,StandRig.Connect.Audio.LipSyncControl? lipSync=null)
     {
         Volatile.Write(ref SpoutStatistics,new SendStatistics());Volatile.Write(ref SpoutResult,1);
-        this.facialControl=facialControl;this.outputView=outputView;this.parameterControl=parameterControl;this.idlePreset=idlePreset;this.spoutEnabled=spoutEnabled;this.present=present;this.capture=capture;this.physicsEnabled=physicsEnabled;this.benchmarkMotion=benchmarkMotion;this.demoEnabled=demoEnabled;this.motion=motion;this.tracking=tracking;
+        this.lipSync=lipSync;this.facialControl=facialControl;this.outputView=outputView;this.parameterControl=parameterControl;this.idlePreset=idlePreset;this.spoutEnabled=spoutEnabled;this.present=present;this.capture=capture;this.physicsEnabled=physicsEnabled;this.benchmarkMotion=benchmarkMotion;this.demoEnabled=demoEnabled;this.motion=motion;this.tracking=tracking;
         try
         {
             if(modelJson==null&&new FileInfo(path).Length>64L*1024*1024)throw new InvalidOperationException("Model exceeds 64 MiB limit");
@@ -134,6 +135,7 @@ internal sealed class ModelRenderPipeline : IFramePipeline
         var motionValues=motion?.Advance(evaluator,elapsedSeconds);
         if(motionValues!=null){activeValues=new Dictionary<string,double>(activeValues);foreach(var pair in motionValues)activeValues[pair.Key]=pair.Value;}
 
+        if(facialControl!=null&&lipSync?.RenderCommand(facialControl.Snapshot()) is {} audioCommand)evaluator.FacialCommand(audioCommand,elapsedSeconds);
         if(parameterSession!=null)facialControl?.Advance(parameterSession,elapsedSeconds,evaluator.FacialCommand,evaluator.FacialState);
         var overrides=parameterSession==null?null:parameterControl!.GetOverrides(parameterSession);
         var metadata=evaluator.RenderInto(JsonSerializer.Serialize(new{time=elapsedSeconds,values=activeValues,overrides=overrides??new Dictionary<string,double>(),matrix,physics=physicsEnabled}),ref renderVertices,ref renderIndices);double evaluated=clock.Elapsed.TotalMilliseconds;
@@ -212,7 +214,7 @@ internal sealed class ModelRenderPipeline : IFramePipeline
         var bytes=new byte[bitmap.Width*bitmap.Height*4];var data=bitmap.LockBits(new Rectangle(0,0,bitmap.Width,bitmap.Height),ImageLockMode.ReadOnly,bitmap.PixelFormat);
         try{for(int y=0;y<bitmap.Height;y++)Marshal.Copy(data.Scan0+y*data.Stride,bytes,y*bitmap.Width*4,bitmap.Width*4);}finally{bitmap.UnlockBits(data);}return bytes;
     }
-    public void Dispose(){facialControl?.Unload(parameterSession);parameterControl?.Unload(parameterSession);if(measured>0)Timings=new{frames=measured,benchmarkMotion,managedBytesPerFrame=managedBytes/(double)measured,recentP95CpuMs=recentCpu.Order().ElementAt((int)Math.Ceiling(recentCpu.Count*.95)-1),evaluationAndTransferMs=evaluationMs/measured,jsonParseMs=parseMs/measured,drawStageMs=drawMs/measured,vertexPreparationMs=prepareMs/measured,effectAndUploadMs=effectMs/measured,totalCpuMs=(evaluationMs+parseMs+drawMs)/measured,evaluatorProfile=JsonDocument.Parse(evaluator.Profile()).RootElement.Clone(),gpuExecutionMeasured=false};if(device!=0){ConnectDestroy(device);device=0;}evaluator.Dispose();}
+    public void Dispose(){lipSync?.ModelStopped(parameterSession);facialControl?.Unload(parameterSession);parameterControl?.Unload(parameterSession);if(measured>0)Timings=new{frames=measured,benchmarkMotion,managedBytesPerFrame=managedBytes/(double)measured,recentP95CpuMs=recentCpu.Order().ElementAt((int)Math.Ceiling(recentCpu.Count*.95)-1),evaluationAndTransferMs=evaluationMs/measured,jsonParseMs=parseMs/measured,drawStageMs=drawMs/measured,vertexPreparationMs=prepareMs/measured,effectAndUploadMs=effectMs/measured,totalCpuMs=(evaluationMs+parseMs+drawMs)/measured,evaluatorProfile=JsonDocument.Parse(evaluator.Profile()).RootElement.Clone(),gpuExecutionMeasured=false};if(device!=0){ConnectDestroy(device);device=0;}evaluator.Dispose();}
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectResize(nint device,uint width,uint height);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectCreate(nint hwnd,uint width,uint height,out nint device);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectUploadTexture(nint device,uint width,uint height,byte[] bytes,uint length,out uint texture);

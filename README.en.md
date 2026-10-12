@@ -9,6 +9,7 @@ This is the **0.1.0 development preview** source release, not a finished install
 ## Features
 
 - [External parameter API](docs/PARAMETER-API.md): discover, temporarily override and clear values over local HTTP.
+- [Audio lip sync](docs/LIPSYNC.md#english): calibrate five vowels from your voice, adjust volume/gate and additional mouth delay.
 - [Expressions, visemes and their external API](docs/FACIAL-API.md#english): select, mix and clear presets authored in StandRig.
 - Embedded-image model JSON loading and Direct3D 11 rendering.
 - Camera tracking for head orientation, eyelids, gaze and mouth; mirrored by default.
@@ -19,7 +20,7 @@ This is the **0.1.0 development preview** source release, not a finished install
 - OBS Game Capture / Window Capture and optional Spout2 output.
 - Processing continues with the control window minimized or in the tray.
 
-Optional upper-body tracking estimates shoulder yaw and roll. Body pitch uses shoulders and hips; arms and full-body tracking are not supported. Built-in expression hotkeys and audio vowel recognition are not implemented. External scripts can use the facial API.
+Optional upper-body tracking estimates shoulder yaw and roll. Body pitch uses shoulders and hips; arms and full-body tracking are not supported. Built-in expression hotkeys are not implemented. Audio lip sync uses speaker-calibrated vowel matching. External scripts can use the facial API.
 
 ## Binary ZIP candidate
 
@@ -59,6 +60,7 @@ Embedded-image models use `.srig` (JSON content). Existing embedded-image `.json
 4. Save a slot in Model. Use `スロットを使う` to restore it next time.
 5. Select an idle preset or load a motion in `モーション`.
 6. For a model exported with registered facial presets, select expressions/vowels in `表情・母音`. Expression strength and layer-specific clear are available.
+7. For audio-driven lips, start a recording input in `リップシンク`, calibrate five vowels and enable application. The model needs A/I/U/E/O/Silence.
 
 Slots are saved manually under `%LOCALAPPDATA%\StandRigConnect\model-slots`. They store the model copy, calibration and controls, including its facial catalog, but not camera startup, OBS output, motion playback, idle selection or current expression/viseme selections. Old payloads are retained and storage grows; cleanup/history UI is not implemented.
 
@@ -76,9 +78,17 @@ Overrides affect only supplied parameters and expire after one second by default
 
 Register expressions and A/I/U/E/O/Silence mouth poses in StandRig, export an embedded-image `.srig`, and load it in Connect. The `表情・母音` tab selects registered entries, adjusts expression strength and clears individual layers. Registration/editing and Live2D `.exp3.json` import/export belong to StandRig.
 
-Facial layers coexist with camera tracking, idle and motion. Clear restores current live input; model switch/render stop releases selection. Processing continues while minimized/in the tray, and the composed image goes to OBS/Spout2. No audio analyzer is included.
+Facial layers coexist with camera tracking, idle and motion. Clear restores current live input; model switch/render stop releases selection. Processing continues while minimized/in the tray, and the composed image goes to OBS/Spout2. Use the separate `リップシンク` tab for audio-driven mouth poses.
 
 **GET / POST `/api/v1/facial`** discovers presets/state, selects expressions, selects/mixes vowels and clears layers. It shares parameter API authentication and model sessions. POST returns 202 for queued acceptance; GET reports application on the renderer thread. Facial selection has no TTL and persists until cleared. See [formats and Python example](docs/FACIAL-API.md).
+
+## Audio lip sync
+
+In `リップシンク`, choose and start a Windows recording endpoint. Click each A/I/U/E/O calibration button and speak that vowel for about two seconds, then enable `音声で口を動かす`. All five model targets plus Silence must be registered in StandRig. Silence closes the mouth.
+
+The analyzer adapts uLipSync MFCC stages to managed .NET without Unity; capture uses NAudio.Wasapi. No Unity, Python or additional pretrained model is needed. Use a microphone or DAW route that appears as a Windows recording endpoint. Audio is not recorded to a file, monitored or forwarded to OBS.
+
+`音量・遅延を調整…` adjusts gain, silence threshold, full opening level and **additional mouth-only delay from 0 to 2000ms**. No automatic audio/video synchronization is included. Calibration/settings save locally; input/application start OFF on each launch. Manual vowel commands and model changes suspend automatic application. See [routing, delay, licenses and validation scope](docs/LIPSYNC.md#english).
 
 ## Output resolution and framing
 

@@ -4,5 +4,10 @@ Copyright 2026 StandRig Connect contributors
 Original source is licensed under Apache License 2.0.
 The embedded evaluator incorporates modified StandRig evaluation code.
 Original notices and licenses are preserved in native/Connect.Evaluation/Resources.
+The MFCC and vowel comparison stages adapt MIT-licensed uLipSync code.
+Copyright (c) 2021 hecomi. See licenses/ULIPSYNC-LICENSE.txt.
+Audio capture uses NAudio.Core/Wasapi; its MIT license and embedded component
+notices are retained in licenses/NAUDIO-LICENSE.txt and
+licenses/NAUDIO-THIRD-PARTY-NOTICES.txt. See licenses/LIPSYNC-PROVENANCE.json.
 Third-party components retain their own licenses; see THIRD_PARTY.md.
 User-supplied artwork and model data are not licensed by this project.

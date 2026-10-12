@@ -48,6 +48,7 @@ The script archives the fixed commit, not the checkout's current working files. 
 ```powershell
 dotnet run --project native/Connect.Tests -c Release
 dotnet run --project native/Connect.Evaluation.Tests -c Release -- --facial
+# Core checks include synthetic MFCC/calibration/delay tests; no microphone is opened.
 node --experimental-strip-types scripts/evaluation/test-finite-packet.mjs
 # Requires evaluator regeneration/vendor source above:
 node scripts/evaluation/test-final-geometry.mjs

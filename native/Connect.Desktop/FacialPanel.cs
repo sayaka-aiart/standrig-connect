@@ -7,7 +7,7 @@ internal sealed partial class MainWindow
     private Control CreateFacialControls()
     {
         var area=new FlowLayoutPanel{AutoSize=true,FlowDirection=FlowDirection.TopDown,WrapContents=false,MaximumSize=new Size(530,0)};
-        area.Controls.Add(new Label{Text="StandRig本体で登録し、画像込みモデル（.srig）を書き出して読み込んでください。\n未登録の表情・母音は使用できません。音声の自動解析はありません。",AutoSize=true,MaximumSize=new Size(510,0)});
+        area.Controls.Add(new Label{Text="StandRig本体で登録し、画像込みモデル（.srig）を書き出して読み込んでください。\n未登録の表情・母音は使用できません。音声からの適用は「リップシンク」へ。",AutoSize=true,MaximumSize=new Size(510,0)});
         var choices=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=280};
         var apply=new Button{Text="表情を適用",AutoSize=true};
         var clearExpression=new Button{Text="表情を解除",AutoSize=true};

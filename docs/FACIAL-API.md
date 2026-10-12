@@ -43,7 +43,7 @@ Connectは登録済みのデータを再生します。登録・編集と `.exp3
 
 成功は **202 Accepted** と `{accepted:true,modelSession,sequence}`。これは受付であり、描画への反映完了ではありません。描画スレッドが順番に処理し、GETの `appliedSequence` と `state` で反映を確認します。`error` は描画側の指示処理エラーです。キューは最大32件で、満杯なら429を返すため少し待って再試行します。全クライアントとUIで1つのキューを共有し、後から反映した指示が選択状態を更新します。
 
-モデル切替後は一覧と `modelSession` を再取得してください。古いセッション／モデル未読込は409、形式不正は400、認証なしは401、ブラウザOriginなどは禁止403、本文32KiB超は413です。表情APIにTTLはありません。数値APIのTTLとは異なり、選択は解除まで継続します。モデルやスロットへの永続編集は行いません。
+モデル切替後は一覧と `modelSession` を再取得してください。古いセッション／モデル未読込は409、形式不正は400、認証なしは401、ブラウザOriginなどは禁止403、本文32KiB超は413です。表情APIにTTLはありません。数値APIのTTLとは異なり、選択は解除まで継続します。モデルやスロットへの永続編集は行いません。音声リップシンクの適用中に母音の指定・混合・解除または全解除を行うと、音声の自動適用を停止して手動操作を優先します。表情だけの操作は併用できます。追加フィールド `manualVisemeVersion` は母音レイヤーに関係する手動指示の世代を示します。
 
 ## Python例
 
@@ -82,4 +82,4 @@ Order: base → tracking → additive idle → motion → expressions → viseme
 
 The authenticated loopback API shares parameter API credentials. GET `/api/v1/facial` discovers catalog, model session, current weights and queue progress. POST accepts `{modelSession,command}` using the command table above and returns **202** with a sequence number; processing occurs on the renderer thread. Inspect GET state/appliedSequence/error for actual application. Maximum queue size is 32 (429 when full); maximum body is 32 KiB. Unknown fields, duplicate keys, unregistered IDs and nonfinite/out-of-range numbers are rejected. Strength/weights are [0,1]; mixtures above 1 are normalized. Below 1 leaves live input contribution. Unlike numeric overrides, facial commands have no TTL. Model changes require rediscovery (stale/no model 409). No rig/slot writes occur.
 
-Audio analysis, delay compensation, built-in global hotkeys and a dedicated Stream Deck plugin are not included. Scripts or HTTP actions can use this API as their input boundary. The Python example uses only the standard library. No StandRig service is required during playback.
+Calibrated [audio lip sync](LIPSYNC.md#english) is available separately, with an additional mouth-delay control. Manual viseme/all-clear commands suspend automatic audio application; expression-only commands coexist. The additive `manualVisemeVersion` field identifies accepted manual commands affecting the vowel layer. Sequence numbers count manual commands only. Automatic synchronization, built-in global hotkeys and a dedicated Stream Deck plugin are not included. Scripts or HTTP actions can use this API as their input boundary. The Python example uses only the standard library. No StandRig service is required during playback.

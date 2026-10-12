@@ -1,0 +1,65 @@
+{
+  "format": "standrig-lipsync-provenance",
+  "version": 1,
+  "ulipSync": {
+    "repository": "https://github.com/hecomi/uLipSync",
+    "commit": "060587907655235dba86dc7052d0b395c8ecd840",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "Assets/uLipSync/Runtime/Core/Algorithm.cs",
+        "sha256": "8824da3724638e84249272cc583baf36b4bc1320d4d91467f2323d4556873b57"
+      },
+      {
+        "path": "Assets/uLipSync/Runtime/Core/LipSyncJob.cs",
+        "sha256": "91fd02b7c0d7d1ca652d6e5385a8e811a30fa0d2d42c74549d5c60807ecd33b7"
+      },
+      {
+        "path": "Assets/uLipSync/Runtime/Core/Profile.cs",
+        "sha256": "90fc3e9bfeac02164d0e1385e770f825eaf82b060c0a8912ae4e0e53ac146bae"
+      }
+    ],
+    "licenseSha256": "d1897e0b1bad123c8ceefdfc3d57356141da9745577e152e01fa3434aeacbefa",
+    "changes": [
+      "Remove Unity, Jobs, Burst, NativeArray dependencies",
+      "Replace recursive allocated FFT with reusable managed radix-2 FFT",
+      "Keep 16kHz input, 1024-sample window, 30 mel bands, 12 non-DC coefficients",
+      "Floor mel energy before log for silence; stabilize normalized L2 scores against underflow",
+      "Independent streaming resampler; no upstream sample voices, UnityChan assets or profiles"
+    ]
+  },
+  "naudio": {
+    "repository": "https://github.com/naudio/NAudio",
+    "tag": "v2.2.1",
+    "commit": "b5d5ff83fd378f046398891fe5cd99426ce44732",
+    "packages": [
+      "NAudio.Core 2.2.1",
+      "NAudio.Wasapi 2.2.1"
+    ],
+    "license": "MIT",
+    "licenseSha256": "303e01786b271eb464b3f43d18a375f2f17d37bc708a37c2fdf45b289fb5bfaa",
+    "embeddedNotices": [
+      {
+        "path": "NAudio.Core/Dsp/WdlResampler.cs",
+        "normalization": "lf",
+        "sha256": "185b3e3e3a810db6b0180db01b79061e1873dca412488a0ac51328fdcc4abbaf"
+      },
+      {
+        "path": "NAudio.Core/Dsp/SmbPitchShifter.cs",
+        "normalization": "lf",
+        "sha256": "759fa8c3eae5f0b1ecb89937a227b8273501c9804d833ff63a68bb79fddedfe9"
+      },
+      {
+        "path": "NAudio.Core/Codecs/G722Codec.cs",
+        "normalization": "lf",
+        "sha256": "20a11848f3ad770cb2f18db145c5306da38f51bbbe0c9142f6dc7b74b7229726"
+      },
+      {
+        "path": "NAudio.Wasapi/CoreAudioApi/AudioEndpointVolume.cs",
+        "normalization": "lf",
+        "sha256": "a3e2e1e9d043020a9b3eaa1eebfc36282ac6e04b7764f48b37b30c4c17a25684"
+      }
+    ],
+    "embeddedNoticeSha256": "43f442b7b86eb563e71658ab7d508c521cbca06b78aa3d50a19ff0ac3431608c"
+  }
+}

@@ -550,5 +550,69 @@
   {
     "source": "scripts/evaluation/test-facial.mjs",
     "target": "scripts/evaluation/test-facial.mjs"
+  },
+  {
+    "source": "native/Connect.Desktop/AudioInput.cs",
+    "target": "native/Connect.Desktop/AudioInput.cs"
+  },
+  {
+    "source": "native/Connect.Desktop/LipSyncPanel.cs",
+    "target": "native/Connect.Desktop/LipSyncPanel.cs"
+  },
+  {
+    "source": "native/Connect.Desktop/LipSyncChecks.cs",
+    "target": "native/Connect.Desktop/LipSyncChecks.cs"
+  },
+  {
+    "source": "native/Connect.Desktop/packages.lock.json",
+    "target": "native/Connect.Desktop/packages.lock.json"
+  },
+  {
+    "source": "native/Connect.Tests/LipSyncChecks.cs",
+    "target": "native/Connect.Tests/LipSyncChecks.cs"
+  },
+  {
+    "source": "scripts/audio/make-mfcc-reference.py",
+    "target": "scripts/audio/make-mfcc-reference.py"
+  },
+  {
+    "source": "scripts/audio/mfcc-reference.json",
+    "target": "scripts/audio/mfcc-reference.json"
+  },
+  {
+    "source": "docs/LIPSYNC.md",
+    "target": "docs/LIPSYNC.md"
+  },
+  {
+    "source": "licenses/ULIPSYNC-LICENSE.txt",
+    "target": "licenses/ULIPSYNC-LICENSE.txt"
+  },
+  {
+    "source": "licenses/NAUDIO-LICENSE.txt",
+    "target": "licenses/NAUDIO-LICENSE.txt"
+  },
+  {
+    "source": "licenses/NAUDIO-THIRD-PARTY-NOTICES.txt",
+    "target": "licenses/NAUDIO-THIRD-PARTY-NOTICES.txt"
+  },
+  {
+    "source": "licenses/LIPSYNC-PROVENANCE.json",
+    "target": "licenses/LIPSYNC-PROVENANCE.json"
+  },
+  {
+    "source": "native/Connect.Core/Audio/AudioResampler.cs",
+    "target": "native/Connect.Core/Audio/AudioResampler.cs"
+  },
+  {
+    "source": "native/Connect.Core/Audio/LipSyncControl.cs",
+    "target": "native/Connect.Core/Audio/LipSyncControl.cs"
+  },
+  {
+    "source": "native/Connect.Core/Audio/LipSyncProfile.cs",
+    "target": "native/Connect.Core/Audio/LipSyncProfile.cs"
+  },
+  {
+    "source": "native/Connect.Core/Audio/MfccAnalyzer.cs",
+    "target": "native/Connect.Core/Audio/MfccAnalyzer.cs"
   }
 ]

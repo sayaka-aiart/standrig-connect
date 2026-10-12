@@ -2,7 +2,7 @@ using System.Text.Json;
 namespace StandRig.Connect;
 
 public sealed class FacialBusyException(string message):Exception(message);
-public sealed record FacialSnapshot(string? ModelSession,JsonElement? Presets,JsonElement? State,long AcceptedSequence,long AppliedSequence,int Pending,string? Error);
+public sealed record FacialSnapshot(string? ModelSession,JsonElement? Presets,JsonElement? State,long AcceptedSequence,long AppliedSequence,int Pending,string? Error,long ManualVisemeVersion);
 
 // Only the renderer executes commands. HTTP/UI validate and enqueue immutable JSON.
 public sealed class FacialControl
@@ -12,7 +12,7 @@ public sealed class FacialControl
     private string? session;
     private JsonElement? presets,state;
     private HashSet<string> expressions=new(),visemes=new();
-    private long accepted,applied;
+    private long accepted,applied,manualVisemeVersion;
     private double publishedAt=double.NegativeInfinity;
     private string? error;
     public void Load(string modelSession,string validatedCatalog)
@@ -21,9 +21,9 @@ public sealed class FacialControl
         var catalog=doc.RootElement.Clone();
         var expressionIds=catalog.GetProperty("expressions").EnumerateArray().Select(p=>p.GetProperty("id").GetString()!).ToHashSet();
         var visemeIds=catalog.TryGetProperty("visemes",out var bank)?bank.GetProperty("presets").EnumerateArray().Select(p=>p.GetProperty("id").GetString()!).ToHashSet():new HashSet<string>();
-        lock(gate){session=modelSession;presets=catalog;state=null;expressions=expressionIds;visemes=visemeIds;pending.Clear();accepted=applied=0;error=null;publishedAt=double.NegativeInfinity;}
+        lock(gate){session=modelSession;presets=catalog;state=null;expressions=expressionIds;visemes=visemeIds;pending.Clear();accepted=applied=manualVisemeVersion=0;error=null;publishedAt=double.NegativeInfinity;}
     }
-    public void Unload(string? modelSession){lock(gate){if(session!=modelSession)return;session=null;presets=state=null;expressions.Clear();visemes.Clear();pending.Clear();accepted=applied=0;error=null;publishedAt=double.NegativeInfinity;}}
+    public void Unload(string? modelSession){lock(gate){if(session!=modelSession)return;session=null;presets=state=null;expressions.Clear();visemes.Clear();pending.Clear();accepted=applied=manualVisemeVersion=0;error=null;publishedAt=double.NegativeInfinity;}}
     private void Require(string modelSession){if(session==null||session!=modelSession)throw new ParameterSessionException("Model session changed or no model loaded");}
     private static void Fields(JsonElement value,params string[] allowed)
     {
@@ -54,10 +54,11 @@ public sealed class FacialControl
                 default:throw new ArgumentException("Unknown facial action");
             }
             if(pending.Count>=32)throw new FacialBusyException("Facial command queue is full; retry after the renderer advances");
+            if(action!="expression"&&!(action=="clear"&&root.TryGetProperty("layer",out var clearLayer)&&clearLayer.GetString()=="expression"))manualVisemeVersion++;
             long sequence=++accepted;pending.Enqueue((sequence,root.GetRawText()));return sequence;
         }
     }
-    public FacialSnapshot Snapshot(){lock(gate)return new(session,presets,state,accepted,applied,pending.Count,error);}
+    public FacialSnapshot Snapshot(){lock(gate)return new(session,presets,state,accepted,applied,pending.Count,error,manualVisemeVersion);}
     // Called solely on the evaluator's owning thread. One model-scoped queue for UI and HTTP.
     public void Advance(string modelSession,double seconds,Func<string,double,string> command,Func<double,string> snapshot)
     {

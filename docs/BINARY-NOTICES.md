@@ -1,8 +1,10 @@
 # Binary candidate: third-party notices
 
-This framework-dependent Windows x64 candidate contains StandRig Connect, embedded StandRig evaluation code and Zod, ClearScript managed assemblies/ICU, Newtonsoft.Json and optionally statically linked Spout2 code.
+This framework-dependent Windows x64 candidate contains StandRig Connect, embedded StandRig evaluation code and Zod, ClearScript managed assemblies/ICU, NAudio.Core/Wasapi, Newtonsoft.Json and optionally statically linked Spout2 code.
 
 Keep LICENSE, NOTICE and the entire licenses directory with the binaries. licenses/NuGet contains the complete collected upstream package notices, including platform-specific sections; these must not be replaced with a single MIT label. Embedded StandRig and Zod notices are included separately. Spout builds include Spout and ANGLE notices.
+
+Audio lip sync includes adapted uLipSync MFCC stages (MIT), with copyright and permission text in licenses/ULIPSYNC-LICENSE.txt. NAudio.Core/Wasapi 2.2.1 managed assemblies use the upstream MIT notice and contain additional credited code; retain licenses/NAUDIO-LICENSE.txt, licenses/NAUDIO-THIRD-PARTY-NOTICES.txt and licenses/LIPSYNC-PROVENANCE.json. The latter notices preserve Cockos WDL, Ray Molenkamp, Wide Open License and the G722 author public-domain statement/CMU attribution. Unused code inside a complete redistributed DLL still has its notices retained. No Unity/Burst library, sample voice profile, UnityChan asset or lipsync model weight is included.
 
 The native V8 DLL, MediaPipe runtime and Face/Pose Landmarker models are not included. Setup-Runtime.cmd downloads the native V8 DLL from the official pinned NuGet package with package and DLL hash verification. Setup-Tracking.cmd downloads fixed upstream files and retains the MediaPipe notice and provenance locally. No artwork or user settings are included.
 
