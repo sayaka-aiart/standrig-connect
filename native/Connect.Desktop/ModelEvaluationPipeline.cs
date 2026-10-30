@@ -12,8 +12,7 @@ internal sealed class ModelEvaluationPipeline : IFramePipeline
     {
         try
         {
-            if(new FileInfo(path).Length>64L*1024*1024)throw new InvalidOperationException("Model exceeds 64 MiB evaluation limit");
-            using var metadata=JsonDocument.Parse(evaluator.Load(File.ReadAllText(path)));
+            using var metadata=JsonDocument.Parse(evaluator.Load(ModelDocument.Read(path)));
             foreach(var p in metadata.RootElement.GetProperty("parameters").EnumerateArray())values[p.GetProperty("id").GetString()!]=p.GetProperty("default").GetDouble();
             loaded($"評価中: {metadata.RootElement.GetProperty("name").GetString()} / {metadata.RootElement.GetProperty("parts").GetInt32()} parts（画像描画は未接続）");
         }

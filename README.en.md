@@ -114,7 +114,11 @@ The control window may be minimized. × hides it to the tray; exit through the t
 
 Output resolution is configurable, with a target loop of 60Hz. Higher resolutions increase GPU load and memory use; actual performance depends on model and PC. Rendering, camera and OBS have been exercised locally, not qualified for every GPU, camera or sleep/resume scenario.
 
-Models require suitable parameters and rigging. Assets must be embedded PNGs. Limits include a 64MiB model, 4096px per image dimension and a 256MiB base texture budget. Image corrections have additional limits.
+Models require suitable parameters and rigging. Both embedded-image rig JSON and `standrig-bundle` v1 are accepted. Models are bounded at 256MiB and image dimensions at 4096px. The renderer prefers the high-performance GPU and budgets textures, including effect copies, to half the available local GPU memory, capped at 2GiB (256MiB if memory information is unavailable). Effects are bounded at 16,777,216 total pixels. Large models increase RAM, GPU memory and load time; 60fps is not guaranteed.
+
+`additive` angle-image transitions finish each mesh with normal compositing, then add both premultiplied RGB and alpha once. Complementary weights retain opacity where both source images are opaque. This differs from a glow-style additive color blend. Normal, multiply and screen blending remain unchanged. Live physics advances in bounded small steps even when rendering slows down.
+
+Large-model slots store the raw model separately from small settings JSON and verify its SHA-256. Legacy slots remain readable; new slots require this version of Connect, so retain the original model file as well.
 
 Camera processing is local with no ordinary upload or recording. Explicit diagnostics may save screenshots/reports. Private artwork, settings and test assets are excluded from source distribution.
 

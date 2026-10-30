@@ -34,6 +34,8 @@ internal static class Program
             }catch(Exception ex){File.WriteAllText(args[2],JsonSerializer.Serialize(new{passed=false,error=ex.Message}));Environment.ExitCode=1;}return;
         }
         ApplicationConfiguration.Initialize();
+        if(args.Length==2&&args[0]=="--composite-render-test"){RunCheck(()=>CompositeRenderChecks.Run(args[1]),args[1]);return;}
+        if(args.Length==4&&args[0]=="--model-motion-render-test"){RunCheck(()=>ModelMotionChecks.Run(args[1],args[2],args[3]),Path.Combine(args[3],"result.json"));return;}
         if(args.Length==2&&(args[0]=="--camera-capture-test"||args[0]=="--face-capture-test")){
             try{
                 var devices=Task.Run(CameraDevices.Enumerate).GetAwaiter().GetResult();
@@ -208,6 +210,9 @@ internal static class Program
             Application.Run(test); return;
         }
         Application.Run(new MainWindow(false));
+    }
+    private static void RunCheck(Action check,string report){
+        try{check();}catch(Exception ex){Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(report))!);File.WriteAllText(report,JsonSerializer.Serialize(new{passed=false,error=ex.ToString()}));Environment.ExitCode=1;}
     }
 }
 

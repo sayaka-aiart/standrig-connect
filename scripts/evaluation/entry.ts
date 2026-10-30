@@ -6,12 +6,14 @@ import { parameterDefinitionsForRig, defaultParameterValues } from '@core/parame
 import { prepareNativeArtMeshResolver } from '@core/artMesh';
 import { applySkinningToVertices } from '@core/skinning';
 import { finalGeometry } from './final-geometry';
+import { renderSelection } from './render-selection';
 import { validateFinitePacket } from './finite-packet';
 import { initializeTracking } from './tracking-session';
 export {loadTrackingProfile,mapTracking,resetTracking,calibrateTracking,exportTrackingProfile} from './tracking-session';
 export {convertFace} from './face-input';
 import { parseMotion,validateMotionParameters,sampleMotion } from '@core/motion';
 import { FacialController } from '@facial-runtime';
+import { prepareLivePhysicsStep } from '@physics-stepping';
 let facial:FacialController|undefined;
 export function facialCatalog(){if(!facial)throw Error('no model');return JSON.stringify(facial.catalog());}
 export function facialCommand(json:string,seconds:number){if(!facial)throw Error('no model');facialTime(seconds);return JSON.stringify(facial.command(JSON.parse(json),seconds*1000));}
@@ -85,10 +87,12 @@ function advance(json:string,details:boolean,renderMode=false){
  const nextPhysics=new Map([...physics].map(([key,value])=>[key,{...value}]));
  const t0=Date.now();
  const composed={...facial!.evaluate(values,time*1000),...input.overrides};
- const frame=resolveRigFrame(rig,composed,matrix,{physics:input.physics!==false,physicsState:nextPhysics,physicsTime:time,physicsDt:lastTime===undefined?1/60:Math.min(.05,Math.max(.001,time-lastTime))});
+ const step=input.physics===false?{dt:1/60,time}:prepareLivePhysicsStep(rig,composed,lastInputValues,nextPhysics,lastTime===undefined?1/60:time-lastTime,time);
+ const frame=resolveRigFrame(rig,composed,matrix,{physics:input.physics!==false,physicsState:nextPhysics,physicsTime:step.time,physicsDt:step.dt});
  const t1=Date.now();
  const assets=new Map(rig.assets.map((a:any)=>[a.id,a]));
- const parts=[...rig.parts].sort((a,b)=>a.drawOrder-b.drawOrder).map(part=>{
+ const required=renderMode?renderSelection(rig,frame.parts):undefined;
+ const parts=[...rig.parts].filter(part=>!required||required.has(part.id)).sort((a,b)=>a.drawOrder-b.drawOrder).map(part=>{
    const state=frame.parts.get(part.id);const asset:any=assets.get(part.assetId);
    const mesh=asset?.width>0&&asset?.height>0?cachedMesh(part,asset,frame.values):undefined;
    const localMesh=mesh&&part.artMesh?.skinning?{...mesh,vertices:applySkinningToVertices(mesh.vertices,part.artMesh.skinning,frame.skinningTransforms)}:mesh;
@@ -99,8 +103,13 @@ function advance(json:string,details:boolean,renderMode=false){
  const geometry=finalGeometry(rig,frame,matrix,parts);
  const packet={contract:1,meshStage:'local-skinned-pre-warp-and-glue',geometry,time,values:frame.values,parts,skinningTransforms:[...frame.skinningTransforms],physics:{partOffsets:[...frame.physics.partOffsets],deformerOffsets:[...frame.physics.deformerOffsets],parameterOffsets:frame.physics.parameterOffsets}};
  const t2=Date.now();
- validateFinitePacket(packet);
- if(renderMode){let vertices=0,indices=0;for(const mesh of geometry.meshes){vertices+=mesh.vertices.length;indices+=mesh.triangles.length;for(const v of mesh.vertices)if(![v.x,v.y,v.u,v.v].every(n=>Number.isFinite(Math.fround(n))))throw Error('render float overflow');}if(vertices>1000000||indices>3000000)throw Error('render packet budget exceeded');}
+ if(renderMode){
+  // The native boundary submits projected vertices, not diagnostic local meshes
+  // and shared Warp grids. Check every submitted float and metadata value once.
+  for(const state of frame.parts.values())validateFinitePacket({pose:state.pose,matrix:state.matrix,opacity:state.opacity});
+  validateFinitePacket({values:frame.values,inputValues:composed,physics:packet.physics,geometry:{...geometry,meshes:geometry.meshes.map(({vertices,triangles,...metadata}:any)=>metadata)}});
+  let vertices=0,indices=0;for(const mesh of geometry.meshes){vertices+=mesh.vertices.length;indices+=mesh.triangles.length;for(const v of mesh.vertices)if(![v.x,v.y,v.u,v.v].every(n=>Number.isFinite(Math.fround(n))))throw Error('render float overflow');}if(vertices>1000000||indices>3000000)throw Error('render packet budget exceeded');
+ }else validateFinitePacket(packet);
  const result=JSON.stringify(details?packet:{contract:1,time,parts:parts.length,rendererReady:false});
  if(++samples>10){coreMs+=t1-t0;geometryMs+=t2-t1;samplingMs+=projectedAt-t1;projectionMs+=t2-projectedAt;validationMs+=Date.now()-t2;}
  physics=nextPhysics;lastTime=time;lastPacket=packet;lastInputValues=composed;return result;

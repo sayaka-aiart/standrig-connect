@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Diagnostics;
 using StandRig.Connect.Evaluation;
+if(args.Length==1&&args[0]=="--model-documents"){ModelDocumentChecks.Run();return;}
+if(args.Length==3&&args[0]=="--model-document-file"){ModelDocumentChecks.RunFile(args[1],args[2]);return;}
 if(args.Length==1&&args[0]=="--facial"){FacialChecks.Run();return;}
 if(args.Length>0&&args[0]=="--pitch-profile"){
  var old="""{"name":"Connect standard","tracking":{"mappings":[{"source":"facePitch","parameter":"ParamAngleY","scale":22.5},{"source":"bodyPitch","parameter":"ParamBodyAngleY","scale":8}]}}""";
@@ -268,7 +270,11 @@ for(int i=0;i<requests.Length;i++){
  if(reusableMetadata!=packed.Metadata||!reusableVertices.SequenceEqual(packed.Vertices)||!reusableIndices.SequenceEqual(packed.Indices))throw new Exception("Reusable render output mismatch");
  if(oldVertices.Length==reusableVertices.Length&&!ReferenceEquals(oldVertices,reusableVertices)||oldIndices.Length==reusableIndices.Length&&!ReferenceEquals(oldIndices,reusableIndices))throw new Exception("Stable buffers not reused");
  var actualMeshes=packet.RootElement.GetProperty("geometry").GetProperty("meshes").EnumerateArray().ToArray();
- var expectedMeshes=expected[i].GetProperty("geometry").GetProperty("meshes").EnumerateArray().ToArray();
+ var allExpectedMeshes=expected[i].GetProperty("geometry").GetProperty("meshes").EnumerateArray().ToArray();
+ var visibleExpected=allExpectedMeshes.Where(m=>m.GetProperty("visible").GetBoolean()&&m.GetProperty("opacity").GetDouble()>0).ToArray();
+ var needed=visibleExpected.Select(m=>m.GetProperty("partId").GetString()!).ToHashSet();
+ foreach(var mesh in visibleExpected){var clip=mesh.GetProperty("clip");if(clip.ValueKind!=JsonValueKind.Null)foreach(var id in clip.GetProperty("maskPartIds").EnumerateArray())needed.Add(id.GetString()!);}
+ var expectedMeshes=allExpectedMeshes.Where(m=>needed.Contains(m.GetProperty("partId").GetString()!)).ToArray();
  if(actualMeshes.Length!=expectedMeshes.Length)throw new Exception("Packed mesh count mismatch");
  Compare(expected[i].GetProperty("values"),packet.RootElement.GetProperty("values"),"packed values");
  for(int j=0;j<actualMeshes.Length;j++){

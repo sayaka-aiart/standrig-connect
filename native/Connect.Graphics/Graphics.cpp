@@ -1,10 +1,11 @@
 #include <windows.h>
 #include <d3d11.h>
-#include <dxgi.h>
+#include <dxgi1_6.h>
 #include <wrl/client.h>
 #include <new>
 #include <d3dcompiler.h>
 #include <vector>
+#include <algorithm>
 #include <cmath>
 #ifdef CONNECT_SPOUT
 #include <SpoutDX.h>
@@ -25,6 +26,13 @@ struct Graphics {
     ComPtr<ID3D11InputLayout> layout;
     ComPtr<ID3D11SamplerState> sampler;
     ComPtr<ID3D11BlendState> blend;
+    ComPtr<ID3D11BlendState> plusBlend;
+    ComPtr<ID3D11Texture2D> additiveFrame;
+    ComPtr<ID3D11RenderTargetView> additiveTarget;
+    ComPtr<ID3D11ShaderResourceView> additiveView;
+    ComPtr<ID3D11PixelShader> isolatePixel,plusPixel;
+    ComPtr<ID3D11VertexShader> plusVertex;
+    ComPtr<ID3D11Buffer> plusOpacity;
     ComPtr<ID3D11RasterizerState> raster;
     ComPtr<ID3D11Buffer> vertices, indices;
     UINT vertexCapacity=0,indexCapacity=0;
@@ -49,7 +57,9 @@ extern "C" __declspec(dllexport) HRESULT __cdecl ConnectCreate(HWND window, UINT
     DXGI_SWAP_CHAIN_DESC swap={};swap.BufferDesc.Width=width;swap.BufferDesc.Height=height;
     swap.BufferDesc.Format=DXGI_FORMAT_B8G8R8A8_UNORM;swap.SampleDesc.Count=1;swap.BufferUsage=DXGI_USAGE_RENDER_TARGET_OUTPUT;
     swap.BufferCount=2;swap.OutputWindow=window;swap.Windowed=TRUE;swap.SwapEffect=DXGI_SWAP_EFFECT_FLIP_DISCARD;
-    HRESULT hr=D3D11CreateDeviceAndSwapChain(nullptr,D3D_DRIVER_TYPE_HARDWARE,nullptr,D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+    ComPtr<IDXGIFactory6> factory;ComPtr<IDXGIAdapter1> adapter;
+    if(SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))))factory->EnumAdapterByGpuPreference(0,DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,IID_PPV_ARGS(&adapter));
+    HRESULT hr=D3D11CreateDeviceAndSwapChain(adapter.Get(),adapter?D3D_DRIVER_TYPE_UNKNOWN:D3D_DRIVER_TYPE_HARDWARE,nullptr,D3D11_CREATE_DEVICE_BGRA_SUPPORT,
         nullptr,0,D3D11_SDK_VERSION,&swap,&g->swap,&g->device,nullptr,&g->context);
     if(FAILED(hr)){delete g;return hr;}
     D3D11_TEXTURE2D_DESC desc={};desc.Width=width;desc.Height=height;desc.MipLevels=1;desc.ArraySize=1;
@@ -59,6 +69,20 @@ extern "C" __declspec(dllexport) HRESULT __cdecl ConnectCreate(HWND window, UINT
     if(SUCCEEDED(hr))hr=g->device->CreateRenderTargetView(g->frame.Get(),nullptr,&g->target);
     if(FAILED(hr)){delete g;return hr;}
     *result=g;return S_OK;
+}
+// Keep headroom for render surfaces, effects, the desktop and other applications.
+extern "C" __declspec(dllexport) HRESULT __cdecl ConnectTextureBudget(Graphics* g,UINT64* bytes){
+    if(!g||!bytes)return E_INVALIDARG;
+    *bytes=256ull*1024*1024;
+    ComPtr<IDXGIDevice> device;ComPtr<IDXGIAdapter> adapter;ComPtr<IDXGIAdapter3> memory;
+    if(SUCCEEDED(g->device.As(&device))&&SUCCEEDED(device->GetAdapter(&adapter))&&SUCCEEDED(adapter.As(&memory))){
+        DXGI_QUERY_VIDEO_MEMORY_INFO info={};
+        if(SUCCEEDED(memory->QueryVideoMemoryInfo(0,DXGI_MEMORY_SEGMENT_GROUP_LOCAL,&info))){
+            UINT64 available=info.Budget>info.CurrentUsage?info.Budget-info.CurrentUsage:0;
+            *bytes=(std::min)(2ull*1024*1024*1024,available/2);
+        }
+    }
+    return S_OK;
 }
 // Resize render surfaces on the model worker; retain uploaded textures and shaders.
 extern "C" __declspec(dllexport) HRESULT __cdecl ConnectResize(Graphics* g,UINT width,UINT height){
@@ -77,6 +101,7 @@ extern "C" __declspec(dllexport) HRESULT __cdecl ConnectResize(Graphics* g,UINT 
     g->compositePixel.Reset();g->compositeVertex.Reset();
     g->maskView.Reset();g->contentView.Reset();g->maskTarget.Reset();g->contentTarget.Reset();
     g->maskFrame.Reset();g->contentFrame.Reset();g->blendView.Reset();g->blendFrame.Reset();g->groupStage=0;
+    g->additiveFrame.Reset();g->additiveTarget.Reset();g->additiveView.Reset();
     return S_OK;
 }
 extern "C" __declspec(dllexport) HRESULT __cdecl ConnectDrawDiagnostic(Graphics* g,float phase,BOOL present) {

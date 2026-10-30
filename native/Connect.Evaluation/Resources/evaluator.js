@@ -1,6 +1,6 @@
 var StandRigEvaluation = (function(exports) {
 	Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/types.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/types.ts
 	var RIG_SCHEMA_VERSION = "0.1.0";
 	var PARAMETER_IDS = [
 		"ParamAngleX",
@@ -39,7 +39,7 @@ var StandRigEvaluation = (function(exports) {
 		"curve"
 	];
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/migration.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/migration.ts
 	var CURRENT_RIG_SCHEMA_VERSION = RIG_SCHEMA_VERSION;
 	var RigMigrationError = class extends Error {
 		code;
@@ -79,7 +79,7 @@ var StandRigEvaluation = (function(exports) {
 		return new RigMigrationError("invalid-document", message);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/bindingPreparation.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/bindingPreparation.ts
 	function prepareRigBindingOrder(rig) {
 		for (const part of rig.parts) {
 			sortBindings(part.bindings);
@@ -130,7 +130,7 @@ var StandRigEvaluation = (function(exports) {
 		return axis;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/bindings.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/bindings.ts
 	var INTERPOLATION_SET = new Set(PARAMETER_INTERPOLATIONS);
 	function isParameterInterpolation(value) {
 		return typeof value === "string" && INTERPOLATION_SET.has(value);
@@ -191,7 +191,7 @@ var StandRigEvaluation = (function(exports) {
 		return clamped;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/artMeshBlendShape.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/artMeshBlendShape.ts
 	/** Sample a neutral-to-delta ArtMesh shape without changing the neutral mesh. */
 	function sampleArtMeshBlendShape(shape, input) {
 		if (!Number.isFinite(input) || !Number.isFinite(shape.neutralInput) || !Number.isFinite(shape.targetInput) || shape.neutralInput === shape.targetInput) return /* @__PURE__ */ new Map();
@@ -209,7 +209,7 @@ var StandRigEvaluation = (function(exports) {
 		return applyParameterInterpolation(normalizeParameterInterpolation(shape.interpolation), amount, shape.curve);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/extendedBlendShape.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/extendedBlendShape.ts
 	var blendWeight = (shape, values) => sampleArtMeshBlendShapeWeight(shape, values[shape.parameter] ?? shape.neutralInput);
 	function applyTransformShapes(pose, shapes, values) {
 		for (const shape of shapes ?? []) {
@@ -223,17 +223,29 @@ var StandRigEvaluation = (function(exports) {
 	}
 	function resolveSharedShape(field, shapes, values) {
 		if (!field || !shapes?.some((s) => s.sharedPoints?.length) && !field.controlPoints.some((p) => p.bindings?.length)) return field;
-		const result = structuredClone(field);
+		const result = {
+			...field,
+			bounds: { ...field.bounds },
+			grid: { ...field.grid },
+			controlPoints: field.controlPoints.map((point) => ({ ...point }))
+		};
 		for (const point of result.controlPoints) for (const binding of (point.bindings ?? []).slice(0, 16)) {
 			const value = sampleBinding(binding, values[binding.parameter] ?? 0);
 			point[binding.property] = binding.additive === false ? value : point[binding.property] + value;
 		}
-		for (const shape of shapes ?? []) for (const delta of shape.sharedPoints ?? []) {
-			const point = result.controlPoints.find((p) => p.id === delta.id);
-			if (point) {
-				const w = blendWeight(shape, values);
-				point.offsetX += delta.x * w;
-				point.offsetY += delta.y * w;
+		const pointsById = /* @__PURE__ */ new Map();
+		if (shapes?.some((shape) => shape.sharedPoints?.length)) {
+			for (const point of result.controlPoints) if (!pointsById.has(point.id)) pointsById.set(point.id, point);
+		}
+		for (const shape of shapes ?? []) {
+			if (!shape.sharedPoints?.length) continue;
+			const w = blendWeight(shape, values);
+			for (const delta of shape.sharedPoints ?? []) {
+				const point = pointsById.get(delta.id);
+				if (point) {
+					point.offsetX += delta.x * w;
+					point.offsetY += delta.y * w;
+				}
 			}
 		}
 		return result;
@@ -243,7 +255,7 @@ var StandRigEvaluation = (function(exports) {
 		return Math.min(1, Math.max(0, base + (glue.blendShapes ?? []).reduce((sum, s) => sum + s.strength * blendWeight(s, values), 0)));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/multiBindings.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/multiBindings.ts
 	function sampleMultiParameterBinding(binding, values) {
 		if (!Array.isArray(binding.parameters) || binding.parameters.length !== 2) return void 0;
 		const [xParameter, yParameter] = binding.parameters;
@@ -303,7 +315,7 @@ var StandRigEvaluation = (function(exports) {
 		return typeof value === "number" && Number.isFinite(value);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/warp.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/warp.ts
 	var resolvedPinScopes = /* @__PURE__ */ new WeakMap();
 	function defaultWarpDeformer() {
 		return {
@@ -588,7 +600,7 @@ var StandRigEvaluation = (function(exports) {
 		return t * t * (3 - 2 * t);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/sharedWarp.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/sharedWarp.ts
 	/** Compile a snapshot for repeated sampling within one evaluation frame. */
 	function createSharedWarpSampler(field) {
 		const snapshot = {
@@ -596,6 +608,35 @@ var StandRigEvaluation = (function(exports) {
 			bounds: { ...field.bounds },
 			grid: { ...field.grid }
 		};
+		const { columns, rows } = snapshot.grid;
+		if (Number.isInteger(columns) && columns >= 1 && columns <= 16 && Number.isInteger(rows) && rows >= 1 && rows <= 16) {
+			const stride = columns + 1;
+			const offsetsX = new Float64Array(stride * (rows + 1));
+			const offsetsY = new Float64Array(offsetsX.length);
+			for (const point of field.controlPoints) {
+				if (!Number.isInteger(point.column) || !Number.isInteger(point.row) || point.column < 0 || point.column > columns || point.row < 0 || point.row > rows) continue;
+				const index = point.row * stride + point.column;
+				offsetsX[index] = point.enabled === false ? 0 : point.offsetX;
+				offsetsY[index] = point.enabled === false ? 0 : point.offsetY;
+			}
+			return (x, y) => {
+				if (!snapshot.enabled) return {
+					x: 0,
+					y: 0
+				};
+				const gx = clamp$2((x - snapshot.bounds.left) / snapshot.bounds.width, 0, 1) * columns;
+				const gy = clamp$2((y - snapshot.bounds.top) / snapshot.bounds.height, 0, 1) * rows;
+				const x0 = Math.floor(gx), y0 = Math.floor(gy);
+				const x1 = Math.min(columns, x0 + 1), y1 = Math.min(rows, y0 + 1);
+				const tx = gx - x0, ty = gy - y0;
+				const a = y0 * stride + x0, b = y0 * stride + x1;
+				const c = y1 * stride + x0, d = y1 * stride + x1;
+				return {
+					x: bilinear$1(offsetsX[a], offsetsX[b], offsetsX[c], offsetsX[d], tx, ty),
+					y: bilinear$1(offsetsY[a], offsetsY[b], offsetsY[c], offsetsY[d], tx, ty)
+				};
+			};
+		}
 		const points = new Map(field.controlPoints.map((point) => [`${point.column}|${point.row}`, { ...point }]));
 		return (x, y) => sampleIndexedSharedWarpField(snapshot, points, x, y);
 	}
@@ -649,7 +690,7 @@ var StandRigEvaluation = (function(exports) {
 		return Math.min(max, Math.max(min, value));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/deformers.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/deformers.ts
 	function deformerForPart(part, deformers) {
 		if (part.deformerId) return deformers.find((deformer) => deformer.id === part.deformerId);
 		return deformers.find((deformer) => deformer.targetPartIds?.includes(part.id));
@@ -943,7 +984,7 @@ var StandRigEvaluation = (function(exports) {
 		return values;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/evaluator.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/evaluator.ts
 	var MIN_SCALE = .001;
 	/**
 	* Resolve one complete model frame for every renderer.
@@ -955,14 +996,15 @@ var StandRigEvaluation = (function(exports) {
 	function resolveRigFrame(rig, values, baseMatrix, options = {}) {
 		const physics = options.physics !== false ? options.physicsState ? resolvePhysicsFrame(rig, values, options.physicsState, clampPhysicsDt(options.physicsDt), finiteOr(options.physicsTime, 0)) : resolveDeterministicPhysicsFrame(rig, values, finiteOr(options.physicsTime, 0), options.physicsSteps ?? 18, clampPhysicsDt(options.physicsDt)) : emptyPhysicsFrame();
 		const effectiveValues = applyPhysicsParameterOffsets(values, physics.parameterOffsets);
+		const deformerStates = evaluateDeformers(rig.deformers ?? [], effectiveValues, physics.deformerOffsets);
 		return {
 			values: effectiveValues,
 			physics,
-			skinningTransforms: resolveDeformerSkinningTransforms(evaluateDeformers(rig.deformers ?? [], effectiveValues, physics.deformerOffsets), evaluateDeformers(rig.deformers ?? [], defaultParameterValues(rig))),
-			parts: evaluateRigParts(rig, effectiveValues, baseMatrix, {
+			skinningTransforms: resolveDeformerSkinningTransforms(deformerStates, evaluateDeformerStates(rig.deformers ?? [], defaultParameterValues(rig), void 0, false)),
+			parts: evaluateRigPartsWithDeformers(rig, effectiveValues, baseMatrix, {
 				physicsOffsets: physics.partOffsets,
 				physicsDeformerOffsets: physics.deformerOffsets
-			})
+			}, deformerStates)
 		};
 	}
 	/**
@@ -995,10 +1037,10 @@ var StandRigEvaluation = (function(exports) {
 	function clampPhysicsDt(value) {
 		return Math.min(.1, Math.max(1e-4, finiteOr(value, 1 / 60)));
 	}
-	function evaluateRigParts(rig, values, baseMatrix, options = {}) {
+	/** Frame-local reuse only: editing a rig between calls always evaluates fresh data. */
+	function evaluateRigPartsWithDeformers(rig, values, baseMatrix, options, deformerStates) {
 		const byId = new Map(rig.parts.map((part) => [part.id, part]));
 		const deformers = rig.deformers ?? [];
-		const deformerStates = evaluateDeformers(deformers, values, options.physicsDeformerOffsets);
 		const computed = /* @__PURE__ */ new Map();
 		const visiting = /* @__PURE__ */ new Set();
 		const computePart = (part) => {
@@ -1050,6 +1092,9 @@ var StandRigEvaluation = (function(exports) {
 		return computed;
 	}
 	function evaluateDeformers(deformers, values, physicsOffsets = void 0) {
+		return evaluateDeformerStates(deformers, values, physicsOffsets, true);
+	}
+	function evaluateDeformerStates(deformers, values, physicsOffsets, includeWarpFields) {
 		const byId = new Map(deformers.map((deformer) => [deformer.id, deformer]));
 		const computed = /* @__PURE__ */ new Map();
 		const visiting = /* @__PURE__ */ new Set();
@@ -1077,14 +1122,14 @@ var StandRigEvaluation = (function(exports) {
 				warp: void 0
 			};
 			const pose = resolveDeformerPose(deformer, values, physicsOffsets?.get(deformer.id));
-			const ownWarp = resolveDeformerWarp(deformer, values, sampleBinding);
+			const ownWarp = includeWarpFields ? resolveDeformerWarp(deformer, values, sampleBinding) : void 0;
 			const result = {
 				matrix: multiplyMatrices(parentComputed.matrix, deformerMatrix(deformer, pose)),
 				opacity: parentComputed.opacity * pose.opacity,
 				visible: parentComputed.visible && deformer.visible,
 				pose,
 				warp: mergeResolvedWarpDeformers(parentComputed.warp, ownWarp),
-				sharedWarps: mergeSharedWarpFields(parentComputed.sharedWarps, deformer.sharedWarp ? [resolveSharedShape(deformer.sharedWarp, deformer.blendShapes, values)] : void 0)
+				sharedWarps: includeWarpFields ? mergeSharedWarpFields(parentComputed.sharedWarps, deformer.sharedWarp ? [resolveSharedShape(deformer.sharedWarp, deformer.blendShapes, values)] : void 0) : void 0
 			};
 			computed.set(deformer.id, result);
 			visiting.delete(deformer.id);
@@ -1335,7 +1380,7 @@ var StandRigEvaluation = (function(exports) {
 		return multiplyMatrices(multiplyMatrices(multiplyMatrices(translateMatrix(deformer.origin.x, deformer.origin.y), multiplyMatrices(translateMatrix(pose.x, pose.y), rotateMatrix(pose.rotation))), scaleMatrix(safeScale(pose.scaleX), safeScale(pose.scaleY))), translateMatrix(-deformer.origin.x, -deformer.origin.y));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/artMeshMulti.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/artMeshMulti.ts
 	function sampleMultiArtMeshBinding(binding, values) {
 		const [xParameter, yParameter] = binding.parameters ?? [];
 		if (!xParameter || !yParameter || xParameter === yParameter) return /* @__PURE__ */ new Map();
@@ -1418,7 +1463,7 @@ var StandRigEvaluation = (function(exports) {
 		return typeof value === "number" && Number.isFinite(value);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/artMesh.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/artMesh.ts
 	function isValidArtMesh(mesh, width, height) {
 		if (!mesh || mesh.version !== 1 || typeof mesh.enabled !== "boolean" || !Array.isArray(mesh.vertices) || mesh.vertices.length < 3 || !Array.isArray(mesh.triangles) || mesh.triangles.length < 3 || mesh.triangles.length % 3 !== 0) return false;
 		if (!mesh.generator || ![
@@ -1438,11 +1483,7 @@ var StandRigEvaluation = (function(exports) {
 			const a = mesh.triangles[index];
 			const b = mesh.triangles[index + 1];
 			const c = mesh.triangles[index + 2];
-			if (![
-				a,
-				b,
-				c
-			].every((value) => Number.isInteger(value) && value >= 0 && value < mesh.vertices.length) || a === b || b === c || a === c) return false;
+			if (!Number.isInteger(a) || a < 0 || a >= mesh.vertices.length || !Number.isInteger(b) || b < 0 || b >= mesh.vertices.length || !Number.isInteger(c) || c < 0 || c >= mesh.vertices.length || a === b || b === c || a === c) return false;
 			const area = triangleArea(mesh.vertices[a], mesh.vertices[b], mesh.vertices[c]);
 			if (Math.abs(area) < 1e-4) return false;
 		}
@@ -1568,7 +1609,7 @@ var StandRigEvaluation = (function(exports) {
 		};
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/skinning.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/skinning.ts
 	function applySkinningToVertex(vertex, skinning, transforms) {
 		const weights = skinning.vertexWeights[vertex.id] ?? [];
 		let x = 0;
@@ -1603,12 +1644,12 @@ var StandRigEvaluation = (function(exports) {
 		});
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/glue.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/glue.ts
 	function readRigGlue(rig) {
 		return Array.isArray(rig.glue) ? rig.glue : [];
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/glueWarp.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/glueWarp.ts
 	function resolveGlueWarpForPart(rig, part, state, size, computed, sizeForPart) {
 		const gluePins = gluePinsForPart(rig, part, state, size, computed, sizeForPart);
 		if (!gluePins.length) return state.warp;
@@ -1778,7 +1819,7 @@ var StandRigEvaluation = (function(exports) {
 		return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/sharedWarpProjection.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/sharedWarpProjection.ts
 	/**
 	* Converts a part-local point through its evaluated matrix, applies every
 	* enabled shared field in stable parent-to-child order in stage coordinates,
@@ -1811,7 +1852,7 @@ var StandRigEvaluation = (function(exports) {
 		};
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/glueVertex.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/glueVertex.ts
 	/**
 	* Vertex-level glue ("stitch").
 	*
@@ -2004,7 +2045,7 @@ var StandRigEvaluation = (function(exports) {
 		return Math.min(1, Math.max(0, Number.isFinite(value) ? value : .5));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/mask.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/mask.ts
 	/**
 	* Resolves the closest clip owner from a renderable part up through its part
 	* parents. This lets related interior layers share one alpha-union mask without
@@ -2047,7 +2088,7 @@ var StandRigEvaluation = (function(exports) {
 		return [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))];
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/artPath.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/artPath.ts
 	function readRigArtPaths(part) {
 		return Array.isArray(part.artPaths) ? part.artPaths : [];
 	}
@@ -2354,6 +2395,20 @@ var StandRigEvaluation = (function(exports) {
 			vertices,
 			triangles
 		};
+	}
+	//#endregion
+	//#region scripts/evaluation/render-selection.ts
+	/** Cull dormant angle variants, while retaining even hidden mask sources. */
+	function renderSelection(rig, states) {
+		const required = /* @__PURE__ */ new Set(), resolveClip = createPartClipResolver(rig);
+		for (const part of rig.parts) {
+			const state = states.get(part.id);
+			if (part.kind !== "image" || !state?.visible || !(state.opacity > 0)) continue;
+			required.add(part.id);
+			const clip = resolveClip(part);
+			for (const id of clip?.maskPartIds ?? []) required.add(id);
+		}
+		return required;
 	}
 	//#endregion
 	//#region scripts/evaluation/finite-packet.ts
@@ -7079,7 +7134,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/motion.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/motion.ts
 	function object$1(value, keys) {
 		if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((k) => !keys.includes(k))) throw Error("invalid motion object/unknown field");
 	}
@@ -7183,7 +7238,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return Object.fromEntries(clip.tracks.map((t) => [t.parameter, sampleMotionTrack(t, time)]));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/facial.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/facial.ts
 	var jsonClone$1 = (value) => JSON.parse(JSON.stringify(value));
 	var VISEME_IDS = [
 		"A",
@@ -7298,7 +7353,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return jsonClone$1(value);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/runtime/src/facial.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/runtime/src/facial.ts
 	var jsonClone = (value) => JSON.parse(JSON.stringify(value));
 	var weight = (f, now) => f.duration === 0 ? f.to : f.from + (f.to - f.from) * Math.max(0, Math.min(1, (now - f.start) / f.duration));
 	var finiteSaturation = (v) => Math.max(-Number.MAX_VALUE, Math.min(Number.MAX_VALUE, v));
@@ -7464,7 +7519,31 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}
 	};
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/tint.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/runtime/src/physicsStepping.ts
+	/** Bounded catch-up for a live renderer. Geometry is evaluated only once. */
+	function prepareLivePhysicsStep(rig, values, previous, state, elapsed, time) {
+		const duration = Math.min(.25, Math.max(1e-4, Number.isFinite(elapsed) ? elapsed : 1 / 60));
+		const steps = Math.max(1, Math.ceil(duration / (1 / 60)));
+		const dt = duration / steps;
+		const end = Number.isFinite(time) ? time : 0;
+		for (let i = 1; i < steps; i++) {
+			const fraction = i / steps;
+			const input = {};
+			for (const [id, value] of Object.entries(values)) {
+				const from = previous?.[id] ?? value;
+				input[id] = from + (value - from) * fraction;
+			}
+			resolvePhysicsFrame(rig, input, state, dt, end - duration + dt * i);
+		}
+		return {
+			dt,
+			time: end,
+			duration,
+			steps
+		};
+	}
+	//#endregion
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/tint.ts
 	function validatePartTint(tint) {
 		if (!tint) return [];
 		const issues = [];
@@ -7488,7 +7567,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return Math.round(255 * (s * (1 - opacity) + blended * opacity));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/contourShade.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/contourShade.ts
 	function validateContourShade(shade) {
 		return Boolean(shade && /^#[0-9a-fA-F]{6}$/.test(shade.color) && typeof shade.yawParameter === "string" && shade.yawParameter.length && typeof shade.pitchParameter === "string" && shade.pitchParameter.length && Number.isFinite(shade.maxYaw) && shade.maxYaw > 0 && Number.isFinite(shade.maxPitch) && shade.maxPitch > 0 && Number.isFinite(shade.width) && shade.width > 0 && shade.width <= .5 && Number.isFinite(shade.strength) && shade.strength >= 0 && shade.strength <= 1 && Number.isFinite(shade.axisStrength) && shade.axisStrength >= 0 && shade.axisStrength <= 1 && (shade.profile === void 0 || shade.profile === "cheek") && (shade.farContourFade === void 0 || Number.isFinite(shade.farContourFade) && shade.farContourFade >= 0 && shade.farContourFade <= 1) && (shade.nearContourFade === void 0 || Number.isFinite(shade.nearContourFade) && shade.nearContourFade >= 0 && shade.nearContourFade <= 1) && (shade.upContourFade === void 0 || Number.isFinite(shade.upContourFade) && shade.upContourFade >= 0 && shade.upContourFade <= 1) && (shade.upShadowStrength === void 0 || Number.isFinite(shade.upShadowStrength) && shade.upShadowStrength >= 0 && shade.upShadowStrength <= 1) && (shade.lineWidth === void 0 || Number.isFinite(shade.lineWidth) && shade.lineWidth > 0 && shade.lineWidth <= .1));
 	}
@@ -7712,7 +7791,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return entry.processor.render(values);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/461b21d7b46d652f4f865949db025b78f8abe22c/packages/core/src/alphaReveal.ts
+	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/alphaReveal.ts
 	function validateAlphaReveal(reveal) {
 		return Boolean(reveal && typeof reveal.parameter === "string" && reveal.parameter.length && Number.isFinite(reveal.closed) && Number.isFinite(reveal.open) && reveal.open > reveal.closed && Number.isFinite(reveal.exponent) && reveal.exponent > 0 && reveal.exponent <= 4 && (reveal.anchor === void 0 || Number.isFinite(reveal.anchor) && reveal.anchor >= 0 && reveal.anchor <= 1));
 	}
@@ -8033,15 +8112,20 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			...facial.evaluate(values, time * 1e3),
 			...input.overrides
 		};
+		const step = input.physics === false ? {
+			dt: 1 / 60,
+			time
+		} : prepareLivePhysicsStep(rig, composed, lastInputValues, nextPhysics, lastTime === void 0 ? 1 / 60 : time - lastTime, time);
 		const frame = resolveRigFrame(rig, composed, matrix, {
 			physics: input.physics !== false,
 			physicsState: nextPhysics,
-			physicsTime: time,
-			physicsDt: lastTime === void 0 ? 1 / 60 : Math.min(.05, Math.max(.001, time - lastTime))
+			physicsTime: step.time,
+			physicsDt: step.dt
 		});
 		const t1 = Date.now();
 		const assets = new Map(rig.assets.map((a) => [a.id, a]));
-		const parts = [...rig.parts].sort((a, b) => a.drawOrder - b.drawOrder).map((part) => {
+		const required = renderMode ? renderSelection(rig, frame.parts) : void 0;
+		const parts = [...rig.parts].filter((part) => !required || required.has(part.id)).sort((a, b) => a.drawOrder - b.drawOrder).map((part) => {
 			const state = frame.parts.get(part.id);
 			const asset = assets.get(part.assetId);
 			const mesh = asset?.width > 0 && asset?.height > 0 ? cachedMesh(part, asset, frame.values) : void 0;
@@ -8073,8 +8157,21 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}
 		};
 		const t2 = Date.now();
-		validateFinitePacket(packet);
 		if (renderMode) {
+			for (const state of frame.parts.values()) validateFinitePacket({
+				pose: state.pose,
+				matrix: state.matrix,
+				opacity: state.opacity
+			});
+			validateFinitePacket({
+				values: frame.values,
+				inputValues: composed,
+				physics: packet.physics,
+				geometry: {
+					...geometry,
+					meshes: geometry.meshes.map(({ vertices, triangles, ...metadata }) => metadata)
+				}
+			});
 			let vertices = 0, indices = 0;
 			for (const mesh of geometry.meshes) {
 				vertices += mesh.vertices.length;
@@ -8087,7 +8184,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				].every((n) => Number.isFinite(Math.fround(n)))) throw Error("render float overflow");
 			}
 			if (vertices > 1e6 || indices > 3e6) throw Error("render packet budget exceeded");
-		}
+		} else validateFinitePacket(packet);
 		const result = JSON.stringify(details ? packet : {
 			contract: 1,
 			time,

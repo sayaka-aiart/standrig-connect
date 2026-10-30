@@ -5,7 +5,11 @@ $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer
 $vs = & $vswhere -latest -products $VisualStudioProduct -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
 if (!$vs) { throw 'Visual Studio C++ Build Tools and Windows SDK are required.' }
 $vcvars = Join-Path $vs 'VC/Auxiliary/Build/vcvars64.bat'
-$vsInfo = (& $vswhere -latest -products $VisualStudioProduct -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -format json | ConvertFrom-Json)[0]
+$previousEncoding = [Console]::OutputEncoding
+try {
+    [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+    $vsInfo = (& $vswhere -latest -products $VisualStudioProduct -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -format json -utf8 | ConvertFrom-Json)[0]
+} finally { [Console]::OutputEncoding = $previousEncoding }
 $toolsVersion = (Get-Content (Join-Path $vs "VC/Auxiliary/Build/Microsoft.VCToolsVersion.default.txt") -Raw).Trim()
 $source = Join-Path $root 'native/Connect.Graphics/Graphics.cpp'
 $cameraSource = Join-Path $root 'native/Connect.Camera/Camera.cpp'

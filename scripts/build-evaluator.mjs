@@ -10,7 +10,7 @@ const repository=path.resolve(process.argv[2]??path.join(root,'../StandRig'));
 const vendor=path.join(root,'workspace/vendor/standrig-evaluation',source.commit);
 await mkdir(vendor,{recursive:true});
 const archive=path.join(vendor,'source.tar');
-execFileSync('git',['-C',repository,'archive','--format=tar','--output',archive,source.commit,'packages/core/src','packages/runtime/src/facial.ts','LICENSE','NOTICE']);
+execFileSync('git',['-C',repository,'archive','--format=tar','--output',archive,source.commit,'packages/core/src','packages/runtime/src/facial.ts','packages/runtime/src/physicsStepping.ts','LICENSE','NOTICE']);
 execFileSync('tar',['-xf',archive,'-C',vendor]);
 const output=path.join(root,'native/Connect.Evaluation/Resources');
 // Derive a read-only prepared resolver from the pinned implementation, preserving
@@ -41,7 +41,7 @@ const preparedMesh={name:'native-prepared-artmesh',enforce:'pre',transform(code,
  const factory=`\nexport function prepareNativeArtMeshResolver(part: RigPart,width:number,height:number) {\n const mesh=part.artMesh;\n if(!mesh?.enabled || !isValidArtMesh(mesh,width,height)) return (_values:ParameterValues)=>undefined;\n${preparation}\n return (values:ParameterValues):ResolvedArtMesh|undefined=>{\n${body.slice(0,-1)}\n };\n}\n`;
  return code+factory;
 }};
-await build({configFile:false,logLevel:'warn',plugins:[preparedMesh],resolve:{alias:{'@core':path.join(vendor,'packages/core/src'),'@standrig/core':path.join(vendor,'packages/core/src'),'@facial-runtime':path.join(vendor,'packages/runtime/src/facial.ts')}},build:{target:'es2022',minify:false,emptyOutDir:false,outDir:output,lib:{entry:path.join(root,'scripts/evaluation/entry.ts'),name:'StandRigEvaluation',formats:['iife'],fileName:()=> 'evaluator.js'}}});
+await build({configFile:false,logLevel:'warn',plugins:[preparedMesh],resolve:{alias:{'@core':path.join(vendor,'packages/core/src'),'@standrig/core':path.join(vendor,'packages/core/src'),'@facial-runtime':path.join(vendor,'packages/runtime/src/facial.ts'),'@physics-stepping':path.join(vendor,'packages/runtime/src/physicsStepping.ts')}},build:{target:'es2022',minify:false,emptyOutDir:false,outDir:output,lib:{entry:path.join(root,'scripts/evaluation/entry.ts'),name:'StandRigEvaluation',formats:['iife'],fileName:()=> 'evaluator.js'}}});
 const bytes=await readFile(path.join(output,'evaluator.js'));
 await writeFile(path.join(output,'provenance.json'),JSON.stringify({...source,sha256:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length},null,2)+'\n');
 await copyFile(path.join(vendor,'LICENSE'),path.join(output,'STANDRIG-LICENSE'));

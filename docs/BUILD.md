@@ -37,7 +37,7 @@ The original source commit and generated hash are recorded in scripts/evaluation
 npm ci
 # Use a separate checkout. Do not reuse a working model project.
 git clone https://github.com/sayaka-aiart/StandRig.git workspace/standrig-source
-git -C workspace/standrig-source checkout --detach 35641e23619a23e5f6fe1b1a26e21f61485f1221
+git -C workspace/standrig-source checkout --detach ec9d452ff2018342cf5a41ce7e0abeba7378cb26
 node scripts/build-evaluator.mjs workspace/standrig-source
 ```
 
@@ -52,11 +52,18 @@ dotnet run --project native/Connect.Evaluation.Tests -c Release -- --facial
 node --experimental-strip-types scripts/evaluation/test-finite-packet.mjs
 # Requires evaluator regeneration/vendor source above:
 node scripts/evaluation/test-final-geometry.mjs
+node scripts/evaluation/test-render-selection.mjs
+node scripts/evaluation/test-live-physics.mjs
+dotnet run --project native/Connect.Evaluation.Tests -c Release -- --model-documents
 # Use the public StandRig sample, or explicitly supply your own exported model:
 node scripts/evaluation/make-render-fixture.mjs workspace/standrig-source/examples/sample.standrig.json
 node scripts/evaluation/make-fixture.mjs reports/native-render-sample.json
 dotnet run --project native/Connect.Evaluation.Tests -c Release -- reports/evaluation
 dotnet run --project native/Connect.Evaluation.Tests -c Release -- --model-slots
+dotnet native/Connect.Desktop/bin/Release/net8.0-windows/Connect.Desktop.dll --composite-render-test reports/composite.json
+# Optional: your own model, motion (at most 60 seconds), and a NEW output folder.
+dotnet native/Connect.Desktop/bin/Release/net8.0-windows/Connect.Desktop.dll --model-motion-render-test path/to/model.srig path/to/motion.json reports/model-motion
+dotnet run --project native/Connect.Evaluation.Tests -c Release -- --model-document-file path/to/model.srig reports/large-model-slot
 ```
 
 Some additional evaluation modes require local fixture files (for example reports/native-production-source.json for eye checks). These files are deliberately not distributed. Do not interpret an unavailable private-fixture check as a passed check. Tests using a public synthetic sample are distinct from real-character visual review.

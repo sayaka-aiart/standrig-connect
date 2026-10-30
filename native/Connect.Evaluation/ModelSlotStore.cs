@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Security.Cryptography;
 namespace StandRig.Connect.Evaluation;
 
 public sealed record TrackingGain(double Gain,bool Invert);
@@ -6,6 +7,7 @@ public sealed record TrackingControlsSnapshot(Dictionary<string,TrackingGain> Ga
 public sealed record ModelSlotInfo(string Id,string Name,string Revision,DateTimeOffset SavedAt) { public string? TrackingRevision {get;init;} public override string ToString()=>Name; }
 public sealed record ModelSlotDocument(int Version,string ModelJson,string ProfileJson,TrackingControlsSnapshot Controls);
 public sealed record SlotTrackingDocument(int Version,string ProfileJson,TrackingControlsSnapshot Controls);
+public sealed record ModelSlotPayloadV2(int Version,string ModelFile,string ModelSha256,string ProfileJson,TrackingControlsSnapshot Controls);
 
 /// <summary>Immutable payloads plus an atomically replaced small manifest. No source-file dependency.</summary>
 public sealed class ModelSlotStore(string root)
@@ -28,7 +30,7 @@ public sealed class ModelSlotStore(string root)
     }
     private static void Validate(ModelSlotDocument doc){
         if(doc.Version!=1)throw new InvalidDataException("Unsupported slot version");
-        if(System.Text.Encoding.UTF8.GetByteCount(doc.ModelJson)>64*1024*1024||doc.ProfileJson.Length>1024*1024)throw new InvalidDataException("Slot data too large");
+        if(System.Text.Encoding.UTF8.GetByteCount(doc.ModelJson)>ModelDocument.MaxModelBytes||doc.ProfileJson.Length>1024*1024)throw new InvalidDataException("Slot data too large");
         using var model=JsonDocument.Parse(doc.ModelJson);
         if(!model.RootElement.TryGetProperty("parts",out var parts)||parts.ValueKind!=JsonValueKind.Array)throw new InvalidDataException("Invalid model");
         foreach(var asset in model.RootElement.GetProperty("assets").EnumerateArray())
@@ -54,8 +56,17 @@ public sealed class ModelSlotStore(string root)
     public ModelSlotDocument Load(string id){
         var dir=DirectoryFor(id);var info=List().Single(s=>s.Id==id);
         var file=Path.Combine(dir,info.Revision+".json");
-        if(new FileInfo(file).Length>96L*1024*1024)throw new InvalidDataException("Slot file too large");
-        var doc=JsonSerializer.Deserialize<ModelSlotDocument>(File.ReadAllText(file))??throw new InvalidDataException("Invalid slot");
+        if(new FileInfo(file).Length>ModelDocument.MaxSlotBytes)throw new InvalidDataException("Slot file too large");
+        string payload=File.ReadAllText(file);using var header=JsonDocument.Parse(payload);
+        ModelSlotDocument doc;
+        if(header.RootElement.GetProperty("Version").GetInt32()==2){
+            var stored=JsonSerializer.Deserialize<ModelSlotPayloadV2>(payload)??throw new InvalidDataException("Invalid slot");
+            if(stored.ModelFile!=info.Revision+".srig")throw new InvalidDataException("Invalid slot model path");
+            string modelFile=Path.Combine(dir,stored.ModelFile);
+            if(new FileInfo(modelFile).Length>ModelDocument.MaxModelBytes)throw new InvalidDataException("Slot model too large");
+            using(var stream=File.OpenRead(modelFile))if(Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant()!=stored.ModelSha256)throw new InvalidDataException("Slot model hash mismatch");
+            doc=new(1,ModelDocument.Read(modelFile),stored.ProfileJson,stored.Controls);
+        }else doc=JsonSerializer.Deserialize<ModelSlotDocument>(payload)??throw new InvalidDataException("Invalid slot");
         if(info.TrackingRevision!=null){
             var trackingFile=Path.Combine(dir,"tracking-"+info.TrackingRevision+".json");
             if(new FileInfo(trackingFile).Length>8*1024*1024)throw new InvalidDataException("Tracking slot too large");
@@ -84,8 +95,13 @@ public sealed class ModelSlotStore(string root)
         Directory.CreateDirectory(dir);string revision=Guid.NewGuid().ToString("N");
         var info=new ModelSlotInfo(key,name,revision,DateTimeOffset.UtcNow);
         // Never overwrite the active payload. Publish its pointer only after the payload is complete.
-        string payload=JsonSerializer.Serialize(doc,Json);
-        if(System.Text.Encoding.UTF8.GetByteCount(payload)>96L*1024*1024)throw new InvalidDataException("Slot file too large");
+        // Keep large models as raw JSON. Encoding a 200+ MiB model as one escaped
+        // JSON string exceeds System.Text.Json's individual token limit.
+        string modelFile=revision+".srig",modelPath=Path.Combine(dir,modelFile);
+        File.WriteAllText(modelPath,doc.ModelJson);
+        string hash;using(var stream=File.OpenRead(modelPath))hash=Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
+        string payload=JsonSerializer.Serialize(new ModelSlotPayloadV2(2,modelFile,hash,doc.ProfileJson,doc.Controls),Json);
+        if(System.Text.Encoding.UTF8.GetByteCount(payload)>ModelDocument.MaxSlotBytes)throw new InvalidDataException("Slot file too large");
         File.WriteAllText(Path.Combine(dir,revision+".json"),payload);
         var temporary=Path.Combine(dir,"manifest-"+Guid.NewGuid().ToString("N")+".tmp");
         try{File.WriteAllText(temporary,JsonSerializer.Serialize(info,Json));File.Move(temporary,Path.Combine(dir,"slot.json"),true);}

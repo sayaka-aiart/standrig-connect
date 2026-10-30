@@ -44,6 +44,7 @@ internal sealed class ModelRenderPipeline : IFramePipeline
     private Vertex[] drawVertices=Array.Empty<Vertex>();
     private uint[] drawIndices=Array.Empty<uint>();
     internal static object? Timings;
+    internal static object? Resources;
     internal static long RenderedFrames;
     internal static int SpoutResult=1;
     internal static SendStatistics SpoutStatistics=new();
@@ -57,8 +58,7 @@ internal sealed class ModelRenderPipeline : IFramePipeline
         this.lipSync=lipSync;this.facialControl=facialControl;this.outputView=outputView;this.parameterControl=parameterControl;this.idlePreset=idlePreset;this.spoutEnabled=spoutEnabled;this.present=present;this.capture=capture;this.physicsEnabled=physicsEnabled;this.benchmarkMotion=benchmarkMotion;this.demoEnabled=demoEnabled;this.motion=motion;this.tracking=tracking;
         try
         {
-            if(modelJson==null&&new FileInfo(path).Length>64L*1024*1024)throw new InvalidOperationException("Model exceeds 64 MiB limit");
-            var json=modelJson??File.ReadAllText(path);if(System.Text.Encoding.UTF8.GetByteCount(json)>64L*1024*1024)throw new InvalidOperationException("Model exceeds 64 MiB limit");using var model=JsonDocument.Parse(json);
+            var json=modelJson==null?ModelDocument.Read(path):ModelDocument.Normalize(modelJson);using var model=JsonDocument.Parse(json);
             static bool ReferencesBreath(JsonElement element){
                 if(element.ValueKind==JsonValueKind.String)return element.GetString()=="ParamBreath";
                 if(element.ValueKind==JsonValueKind.Array)return element.EnumerateArray().Any(ReferencesBreath);
@@ -85,6 +85,8 @@ internal sealed class ModelRenderPipeline : IFramePipeline
             var required=geometry.GetProperty("meshes").EnumerateArray().Select(m=>m.GetProperty("assetId").GetString()!).ToHashSet();
             if(required.Count==0)throw new NotSupportedException("No image meshes to render");
             Marshal.ThrowExceptionForHR(ConnectCreate(window,(uint)view.Width,(uint)view.Height,out device));
+            Marshal.ThrowExceptionForHR(ConnectTextureBudget(device,out ulong nativeBudget));
+            long textureBudget=checked((long)nativeBudget);
             long textureBytes=0;
             long effectPixels=0;
             var effectParts=model.RootElement.GetProperty("parts").EnumerateArray().Where(p=>new[]{"tint","alphaReveal","contourShade"}.Any(key=>p.TryGetProperty(key,out var v)&&v.ValueKind!=JsonValueKind.Null)).ToArray();
@@ -96,7 +98,7 @@ internal sealed class ModelRenderPipeline : IFramePipeline
                 const string prefix="data:image/png;base64,";
                 if(!src.StartsWith(prefix,StringComparison.Ordinal))throw new NotSupportedException("Embed PNG asset before native rendering: "+id);
                 int width=asset.GetProperty("width").GetInt32(),height=asset.GetProperty("height").GetInt32();
-                if(width<=0||height<=0||width>4096||height>4096||(textureBytes+=(long)width*height*4)>256L*1024*1024)throw new InvalidOperationException("Texture size/budget exceeded");
+                if(width<=0||height<=0||width>4096||height>4096||(textureBytes+=(long)width*height*4)>textureBudget)throw new InvalidOperationException($"Texture size/budget exceeded ({textureBytes/1048576} MiB required, {textureBudget/1048576} MiB available)");
                 using var stream=new MemoryStream(Convert.FromBase64String(src[prefix.Length..]));
                 using var source=Image.FromStream(stream,true,true);
                 if(source.Width!=width||source.Height!=height)throw new InvalidOperationException("Asset dimensions disagree: "+id);
@@ -106,13 +108,14 @@ internal sealed class ModelRenderPipeline : IFramePipeline
                 for(int i=0;i<bytes.Length;i+=4){byte a=straight[i+3];for(int c=0;c<3;c++)bytes[i+c]=(byte)Math.Round(straight[i+c]*a/255d,MidpointRounding.AwayFromZero);bytes[i+3]=a;rgba[i]=straight[i+2];rgba[i+1]=straight[i+1];rgba[i+2]=straight[i];rgba[i+3]=a;}
                 Marshal.ThrowExceptionForHR(ConnectUploadTexture(device,(uint)width,(uint)height,bytes,(uint)bytes.Length,out uint texture));textures.Add(id,texture);
                 foreach(var part in effectParts.Where(p=>p.TryGetProperty("assetId",out var a)&&a.GetString()==id)){
-                    if((effectPixels+=(long)width*height)>1_000_000||(textureBytes+=(long)bytes.Length*2)>256L*1024*1024)throw new NotSupportedException("Image effect development budget exceeded (1 million part pixels)");
+                    if((effectPixels+=(long)width*height)>16_777_216||(textureBytes+=(long)bytes.Length*2)>textureBudget)throw new NotSupportedException("Image effect memory budget exceeded");
                     string partId=part.GetProperty("id").GetString()!;evaluator.RegisterEffect(partId,width,height,rgba,part.GetRawText());
                     Marshal.ThrowExceptionForHR(ConnectUploadTexture(device,(uint)width,(uint)height,bytes,(uint)bytes.Length,out uint normal));
                     Marshal.ThrowExceptionForHR(ConnectUploadTexture(device,(uint)width,(uint)height,bytes,(uint)bytes.Length,out uint mask));effectTextures.Add(partId,(normal,mask));
                 }
             }
             if(required.Any(id=>!textures.ContainsKey(id)))throw new InvalidOperationException("Missing texture");
+            Resources=new{textureBytes,textureBudget,effectPixels,images=textures.Count};
             evaluator.Reset();
             parameterSession=parameterControl?.Load(metadata.RootElement.GetProperty("parameters").EnumerateArray().Select(p=>new ParameterDefinition(p.GetProperty("id").GetString()!,p.GetProperty("min").GetDouble(),p.GetProperty("max").GetDouble(),p.GetProperty("default").GetDouble())));
             if(parameterSession!=null)facialControl?.Load(parameterSession,evaluator.FacialCatalog());
@@ -217,6 +220,7 @@ internal sealed class ModelRenderPipeline : IFramePipeline
     public void Dispose(){lipSync?.ModelStopped(parameterSession);facialControl?.Unload(parameterSession);parameterControl?.Unload(parameterSession);if(measured>0)Timings=new{frames=measured,benchmarkMotion,managedBytesPerFrame=managedBytes/(double)measured,recentP95CpuMs=recentCpu.Order().ElementAt((int)Math.Ceiling(recentCpu.Count*.95)-1),evaluationAndTransferMs=evaluationMs/measured,jsonParseMs=parseMs/measured,drawStageMs=drawMs/measured,vertexPreparationMs=prepareMs/measured,effectAndUploadMs=effectMs/measured,totalCpuMs=(evaluationMs+parseMs+drawMs)/measured,evaluatorProfile=JsonDocument.Parse(evaluator.Profile()).RootElement.Clone(),gpuExecutionMeasured=false};if(device!=0){ConnectDestroy(device);device=0;}evaluator.Dispose();}
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectResize(nint device,uint width,uint height);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectCreate(nint hwnd,uint width,uint height,out nint device);
+    [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectTextureBudget(nint device,out ulong bytes);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectUploadTexture(nint device,uint width,uint height,byte[] bytes,uint length,out uint texture);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectUpdateTexture(nint device,uint texture,byte[] bytes,uint length);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectSpoutFrame(nint device,bool enabled);

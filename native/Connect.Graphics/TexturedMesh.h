@@ -54,6 +54,30 @@ extern "C" __declspec(dllexport) HRESULT __cdecl ConnectBeginModel(Graphics* g) 
     g->context->RSSetViewports(1,&vp);g->context->RSSetState(g->raster.Get());g->context->IASetInputLayout(g->layout.Get());g->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     g->context->VSSetShader(g->vertexShader.Get(),nullptr,0);g->context->PSSetShader(g->pixelShader.Get(),nullptr,0);g->context->PSSetSamplers(0,1,g->sampler.GetAddressOf());return S_OK;
 }
+static HRESULT MakeSurface(Graphics* g,ComPtr<ID3D11Texture2D>& texture,ComPtr<ID3D11RenderTargetView>& target,ComPtr<ID3D11ShaderResourceView>& view);
+static HRESULT PreparePlus(Graphics* g){
+    if(!g->additiveFrame){HRESULT hr=MakeSurface(g,g->additiveFrame,g->additiveTarget,g->additiveView);if(FAILED(hr))return hr;}
+    if(g->plusPixel)return S_OK;
+    const char* code=R"(
+struct P {float4 p:SV_POSITION;float2 uv:TEXCOORD0;float opacity:TEXCOORD1;};
+Texture2D tex:register(t0);SamplerState samp:register(s0);
+float4 isolate(P p):SV_TARGET{return tex.Sample(samp,p.uv);}
+float4 vs(uint id:SV_VertexID):SV_POSITION {float2 p=float2((id<<1)&2,id&2);return float4(p*float2(2,-2)+float2(-1,1),0,1);}
+cbuffer Fade:register(b0){float opacity;float3 padding;};
+float4 plus(float4 p:SV_POSITION):SV_TARGET{return round(tex.Load(int3(p.xy,0))*opacity*255.0)/255.0;}
+)";
+    ComPtr<ID3DBlob> vs,ps,isolate,error;HRESULT hr=D3DCompile(code,strlen(code),nullptr,nullptr,nullptr,"vs","vs_4_0",0,0,&vs,&error);if(FAILED(hr))return hr;
+    hr=D3DCompile(code,strlen(code),nullptr,nullptr,nullptr,"isolate","ps_4_0",0,0,&isolate,&error);if(FAILED(hr))return hr;
+    hr=D3DCompile(code,strlen(code),nullptr,nullptr,nullptr,"plus","ps_4_0",0,0,&ps,&error);if(FAILED(hr))return hr;
+    hr=g->device->CreateVertexShader(vs->GetBufferPointer(),vs->GetBufferSize(),nullptr,&g->plusVertex);if(FAILED(hr))return hr;
+    hr=g->device->CreatePixelShader(isolate->GetBufferPointer(),isolate->GetBufferSize(),nullptr,&g->isolatePixel);if(FAILED(hr))return hr;
+    D3D11_BLEND_DESC bd={};auto& rt=bd.RenderTarget[0];rt.BlendEnable=TRUE;rt.SrcBlend=rt.DestBlend=rt.SrcBlendAlpha=rt.DestBlendAlpha=D3D11_BLEND_ONE;
+    rt.BlendOp=rt.BlendOpAlpha=D3D11_BLEND_OP_ADD;rt.RenderTargetWriteMask=D3D11_COLOR_WRITE_ENABLE_ALL;
+    hr=g->device->CreateBlendState(&bd,&g->plusBlend);if(FAILED(hr))return hr;
+    D3D11_BUFFER_DESC cb={};cb.ByteWidth=16;cb.Usage=D3D11_USAGE_DEFAULT;cb.BindFlags=D3D11_BIND_CONSTANT_BUFFER;
+    hr=g->device->CreateBuffer(&cb,nullptr,&g->plusOpacity);if(FAILED(hr))return hr;
+    return g->device->CreatePixelShader(ps->GetBufferPointer(),ps->GetBufferSize(),nullptr,&g->plusPixel);
+}
 static HRESULT UploadBuffer(Graphics* g,ComPtr<ID3D11Buffer>& buffer,UINT& capacity,UINT flags,const void* data,UINT bytes) {
     if(bytes>capacity){D3D11_BUFFER_DESC d={};d.ByteWidth=bytes;d.Usage=D3D11_USAGE_DYNAMIC;d.BindFlags=flags;d.CPUAccessFlags=D3D11_CPU_ACCESS_WRITE;
         ComPtr<ID3D11Buffer> next;HRESULT hr=g->device->CreateBuffer(&d,nullptr,&next);if(FAILED(hr))return hr;buffer=next;capacity=bytes;}
@@ -92,11 +116,33 @@ float4 ps(P p):SV_TARGET{
 extern "C" __declspec(dllexport) HRESULT __cdecl ConnectDrawMesh(Graphics* g,UINT texture,const MeshVertex* vertices,UINT vertexCount,const UINT* indices,UINT indexCount) {
     if(!g||!g->vertexShader||texture>=g->textures.size()||!vertices||!indices||!vertexCount||vertexCount>1000000||!indexCount||indexCount>3000000||indexCount%3)return E_INVALIDARG;
     for(UINT i=0;i<vertexCount;i++){const auto& v=vertices[i];if(!std::isfinite(v.x)||!std::isfinite(v.y)||!std::isfinite(v.u)||!std::isfinite(v.v)||!std::isfinite(v.opacity)||v.opacity<0||v.opacity>1)return E_INVALIDARG;}
+    // Part opacity is uniform in StandRig's render packets.
+    if(g->blendMode==3)for(UINT i=1;i<vertexCount;i++)if(vertices[i].opacity!=vertices[0].opacity)return E_INVALIDARG;
     for(UINT i=0;i<indexCount;i++)if(indices[i]>=vertexCount)return E_INVALIDARG;
     HRESULT hr=UploadBuffer(g,g->vertices,g->vertexCapacity,D3D11_BIND_VERTEX_BUFFER,vertices,vertexCount*sizeof(MeshVertex));if(FAILED(hr))return hr;
     hr=UploadBuffer(g,g->indices,g->indexCapacity,D3D11_BIND_INDEX_BUFFER,indices,indexCount*sizeof(UINT));if(FAILED(hr))return hr;
     UINT stride=sizeof(MeshVertex),offset=0;g->context->IASetVertexBuffers(0,1,g->vertices.GetAddressOf(),&stride,&offset);g->context->IASetIndexBuffer(g->indices.Get(),DXGI_FORMAT_R32_UINT,0);
     g->context->PSSetShaderResources(0,1,g->textures[texture].GetAddressOf());
+    if(g->blendMode==3){
+        // Canvas lighter: first finish ONE mesh with normal alpha, then add its
+        // premultiplied RGB AND alpha exactly once. Overlapping triangles must
+        // not receive the crossfade weight more than once.
+        hr=PreparePlus(g);if(FAILED(hr))return hr;
+        const float clear[4]={0,0,0,0};g->context->ClearRenderTargetView(g->additiveTarget.Get(),clear);
+        g->context->OMSetRenderTargets(1,g->additiveTarget.GetAddressOf(),nullptr);
+        g->context->PSSetShader(g->isolatePixel.Get(),nullptr,0);g->context->OMSetBlendState(g->blend.Get(),nullptr,0xffffffff);
+        g->context->DrawIndexed(indexCount,0,0);
+        ID3D11ShaderResourceView* empty=nullptr;g->context->PSSetShaderResources(0,1,&empty);
+        auto target=g->groupStage==1?g->contentTarget.Get():g->groupStage==2?g->maskTarget.Get():g->target.Get();
+        g->context->OMSetRenderTargets(1,&target,nullptr);
+        float fade[4]={vertices[0].opacity,0,0,0};g->context->UpdateSubresource(g->plusOpacity.Get(),0,nullptr,fade,0,0);
+        g->context->PSSetConstantBuffers(0,1,g->plusOpacity.GetAddressOf());g->context->PSSetShaderResources(0,1,g->additiveView.GetAddressOf());
+        g->context->IASetInputLayout(nullptr);g->context->VSSetShader(g->plusVertex.Get(),nullptr,0);g->context->PSSetShader(g->plusPixel.Get(),nullptr,0);
+        g->context->OMSetBlendState(g->plusBlend.Get(),nullptr,0xffffffff);g->context->Draw(3,0);
+        g->context->PSSetShaderResources(0,1,&empty);g->context->IASetInputLayout(g->layout.Get());g->context->VSSetShader(g->vertexShader.Get(),nullptr,0);
+        g->context->PSSetShader(g->pixelShader.Get(),nullptr,0);g->context->OMSetBlendState(g->blend.Get(),nullptr,0xffffffff);
+        return g->device->GetDeviceRemovedReason();
+    }
     // Each triangle must observe earlier fragments, including self-overlapping meshes.
     // This correctness path is deliberately conservative; optimize destination copies after parity QA.
     if(g->blendMode){for(UINT i=0;i<indexCount;i+=3){hr=PrepareBlend(g);if(FAILED(hr))return hr;g->context->DrawIndexed(3,i,0);}}

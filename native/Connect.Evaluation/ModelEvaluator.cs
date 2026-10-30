@@ -30,8 +30,7 @@ public sealed class ModelEvaluator : IDisposable
     public string Load(string modelJson)
     {
         CheckThread();
-        if (modelJson.Length > 64 * 1024 * 1024) throw new ArgumentException("Model exceeds evaluation input limit");
-        string result=(string)engine.Script.StandRigEvaluation.load(modelJson);
+        string result=(string)engine.Script.StandRigEvaluation.load(ModelDocument.EvaluationJson(modelJson));
         engine.Script.StandRigEvaluation.clearEffects();return result;
     }
     public string Evaluate(string requestJson)
