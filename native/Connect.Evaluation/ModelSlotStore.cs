@@ -32,8 +32,8 @@ public sealed class ModelSlotStore(string root)
         if(doc.Version!=1)throw new InvalidDataException("Unsupported slot version");
         if(System.Text.Encoding.UTF8.GetByteCount(doc.ModelJson)>ModelDocument.MaxModelBytes||doc.ProfileJson.Length>1024*1024)throw new InvalidDataException("Slot data too large");
         using var model=JsonDocument.Parse(doc.ModelJson);
-        if(!model.RootElement.TryGetProperty("parts",out var parts)||parts.ValueKind!=JsonValueKind.Array)throw new InvalidDataException("Invalid model");
-        foreach(var asset in model.RootElement.GetProperty("assets").EnumerateArray())
+        var rig=ModelDocument.RigRoot(model.RootElement);
+        foreach(var asset in rig.GetProperty("assets").EnumerateArray())
             if(asset.GetProperty("src").GetString()?.StartsWith("data:image/png;base64,",StringComparison.Ordinal)!=true)throw new InvalidDataException("画像込みモデルJSONが必要です。");
         using var profile=JsonDocument.Parse(doc.ProfileJson);
         if(profile.RootElement.GetProperty("format").GetString()!="standrig-tracking-profile"||profile.RootElement.GetProperty("version").GetInt32()!=1)throw new InvalidDataException("Invalid tracking profile");

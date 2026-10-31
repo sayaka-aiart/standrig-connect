@@ -59,17 +59,24 @@ internal sealed class ModelRenderPipeline : IFramePipeline
         try
         {
             var json=modelJson==null?ModelDocument.Read(path):ModelDocument.Normalize(modelJson);using var model=JsonDocument.Parse(json);
+            var modelRoot=ModelDocument.RigRoot(model.RootElement);
             static bool ReferencesBreath(JsonElement element){
                 if(element.ValueKind==JsonValueKind.String)return element.GetString()=="ParamBreath";
                 if(element.ValueKind==JsonValueKind.Array)return element.EnumerateArray().Any(ReferencesBreath);
-                if(element.ValueKind==JsonValueKind.Object)return element.EnumerateObject().Any(p=>p.Name is not ("name" or "label" or "id" or "metadata")&&ReferencesBreath(p.Value));
+                if(element.ValueKind==JsonValueKind.Object)return element.EnumerateObject().Any(p=>p.Name is not ("name" or "label" or "id" or "metadata" or "packedOffsets")&&ReferencesBreath(p.Value));
                 return false;
             }
-            breathBound=new[]{"parts","deformers"}.Any(key=>model.RootElement.TryGetProperty(key,out var group)&&ReferencesBreath(group));
+            breathBound=new[]{"parts","deformers"}.Any(key=>modelRoot.TryGetProperty(key,out var group)&&ReferencesBreath(group));
             var reasons=new List<string>();
-            foreach(var part in model.RootElement.GetProperty("parts").EnumerateArray())
+            var authoredParts=modelRoot.GetProperty("parts").EnumerateArray().ToDictionary(p=>p.GetProperty("id").GetString()!);
+            bool Visible(JsonElement part,HashSet<string> seen){
+                string id=part.GetProperty("id").GetString()!;if(!seen.Add(id)||part.TryGetProperty("visible",out var v)&&v.ValueKind==JsonValueKind.False)return false;
+                return !part.TryGetProperty("parentId",out var parent)||parent.ValueKind!=JsonValueKind.String||!authoredParts.TryGetValue(parent.GetString()!,out var owner)||Visible(owner,seen);
+            }
+            foreach(var part in modelRoot.GetProperty("parts").EnumerateArray())
             {
                 string id=part.GetProperty("id").GetString()!;
+                if(!Visible(part,new()))continue;
                 if(part.TryGetProperty("blendMode",out var blend)&&blend.ValueKind!=JsonValueKind.Null&&!new[]{"normal","multiply","screen","additive"}.Contains(blend.GetString()))reasons.Add(id+": blendMode");
             }
             if(reasons.Count>0)throw new NotSupportedException("Native renderer unsupported features: "+string.Join(", ",reasons.Take(12)));
@@ -89,8 +96,8 @@ internal sealed class ModelRenderPipeline : IFramePipeline
             long textureBudget=checked((long)nativeBudget);
             long textureBytes=0;
             long effectPixels=0;
-            var effectParts=model.RootElement.GetProperty("parts").EnumerateArray().Where(p=>new[]{"tint","alphaReveal","contourShade"}.Any(key=>p.TryGetProperty(key,out var v)&&v.ValueKind!=JsonValueKind.Null)).ToArray();
-            foreach(var asset in model.RootElement.GetProperty("assets").EnumerateArray())
+            var effectParts=modelRoot.GetProperty("parts").EnumerateArray().Where(p=>new[]{"tint","alphaReveal","contourShade"}.Any(key=>p.TryGetProperty(key,out var v)&&v.ValueKind!=JsonValueKind.Null)).ToArray();
+            foreach(var asset in modelRoot.GetProperty("assets").EnumerateArray())
             {
                 string id=asset.GetProperty("id").GetString()!;if(!required.Contains(id))continue;
                 if(textures.ContainsKey(id))throw new InvalidOperationException("Duplicate asset: "+id);
@@ -99,7 +106,7 @@ internal sealed class ModelRenderPipeline : IFramePipeline
                 if(!src.StartsWith(prefix,StringComparison.Ordinal))throw new NotSupportedException("Embed PNG asset before native rendering: "+id);
                 int width=asset.GetProperty("width").GetInt32(),height=asset.GetProperty("height").GetInt32();
                 if(width<=0||height<=0||width>4096||height>4096||(textureBytes+=(long)width*height*4)>textureBudget)throw new InvalidOperationException($"Texture size/budget exceeded ({textureBytes/1048576} MiB required, {textureBudget/1048576} MiB available)");
-                using var stream=new MemoryStream(Convert.FromBase64String(src[prefix.Length..]));
+                using var stream=new MemoryStream(ModelDocument.PngBytes(asset,forRendering:true));
                 using var source=Image.FromStream(stream,true,true);
                 if(source.Width!=width||source.Height!=height)throw new InvalidOperationException("Asset dimensions disagree: "+id);
                 using var bitmap=new Bitmap(width,height,PixelFormat.Format32bppArgb);
@@ -201,7 +208,7 @@ internal sealed class ModelRenderPipeline : IFramePipeline
         string partId=mesh.GetProperty("partId").GetString()!;
         if(effectTextures.TryGetValue(partId,out var pair)){texture=ignoreVisualAlpha?pair.Mask:pair.Normal;var bytes=evaluator.RenderEffect(partId,effectiveValues,ignoreVisualAlpha);if(bytes!=null)Marshal.ThrowExceptionForHR(ConnectUpdateTexture(device,texture,bytes,(uint)bytes.Length));}
         frameEffectMs+=timer.Elapsed.TotalMilliseconds;
-        int blend=ignoreVisualAlpha?0:mesh.GetProperty("blendMode").GetString() switch {"multiply"=>1,"screen"=>2,"additive"=>3,_=>0};
+        int blend=ignoreVisualAlpha?0:mesh.GetProperty("blendMode").GetString() switch {"normal"=>0,"multiply"=>1,"screen"=>2,"additive"=>3,_=>throw new NotSupportedException("Unsupported visible blend mode")};
         Marshal.ThrowExceptionForHR(ConnectSetBlendMode(device,blend));
         // Native code copies these arrays synchronously; only the valid prefix is submitted.
         Marshal.ThrowExceptionForHR(ConnectDrawMesh(device,texture,vertices,(uint)count,indices,(uint)indexCount));

@@ -614,5 +614,57 @@
   {
     "source": "native/Connect.Core/Audio/MfccAnalyzer.cs",
     "target": "native/Connect.Core/Audio/MfccAnalyzer.cs"
+  },
+  {
+    "source": "docs/MODEL-FORMATS.md",
+    "target": "docs/MODEL-FORMATS.md"
+  },
+  {
+    "source": "native/Connect.Desktop/CompositeRenderChecks.cs",
+    "target": "native/Connect.Desktop/CompositeRenderChecks.cs"
+  },
+  {
+    "source": "native/Connect.Desktop/ModelMotionChecks.cs",
+    "target": "native/Connect.Desktop/ModelMotionChecks.cs"
+  },
+  {
+    "source": "native/Connect.Evaluation/ModelDocument.cs",
+    "target": "native/Connect.Evaluation/ModelDocument.cs"
+  },
+  {
+    "source": "native/Connect.Evaluation.Tests/ModelDocumentChecks.cs",
+    "target": "native/Connect.Evaluation.Tests/ModelDocumentChecks.cs"
+  },
+  {
+    "source": "native/Connect.Evaluation.Tests/PackedDocumentChecks.cs",
+    "target": "native/Connect.Evaluation.Tests/PackedDocumentChecks.cs"
+  },
+  {
+    "source": "scripts/evaluation/packed-rig.ts",
+    "target": "scripts/evaluation/packed-rig.ts"
+  },
+  {
+    "source": "scripts/evaluation/packed-fixtures.json",
+    "target": "scripts/evaluation/packed-fixtures.json"
+  },
+  {
+    "source": "scripts/evaluation/make-packed-fixture.mjs",
+    "target": "scripts/evaluation/make-packed-fixture.mjs"
+  },
+  {
+    "source": "scripts/evaluation/test-packed-rig.mjs",
+    "target": "scripts/evaluation/test-packed-rig.mjs"
+  },
+  {
+    "source": "scripts/evaluation/render-selection.ts",
+    "target": "scripts/evaluation/render-selection.ts"
+  },
+  {
+    "source": "scripts/evaluation/test-render-selection.mjs",
+    "target": "scripts/evaluation/test-render-selection.mjs"
+  },
+  {
+    "source": "scripts/evaluation/test-live-physics.mjs",
+    "target": "scripts/evaluation/test-live-physics.mjs"
   }
 ]

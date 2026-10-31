@@ -37,11 +37,19 @@ The original source commit and generated hash are recorded in scripts/evaluation
 npm ci
 # Use a separate checkout. Do not reuse a working model project.
 git clone https://github.com/sayaka-aiart/StandRig.git workspace/standrig-source
-git -C workspace/standrig-source checkout --detach ec9d452ff2018342cf5a41ce7e0abeba7378cb26
+git -C workspace/standrig-source checkout --detach e22e2f498dbe1dd4779c0f28f6b3486fbf977c60
 node scripts/build-evaluator.mjs workspace/standrig-source
 ```
 
 The script archives the fixed commit, not the checkout's current working files. Node modules are build dependencies, not a browser runtime for the native app. Preserve the generated license files and source provenance when updating.
+
+When updating the pin, the prepared mesh adapter must also match the pinned
+resolver's closure. New cores move its body into `resolveArtMeshInternal` with
+an optional `onStage` diagnostic callback. The generated native callback binds
+`const onStage=undefined;` so copied references stay valid without enabling
+diagnostic snapshots during playback. Evaluator builds execute a synthetic
+authored mesh through both diagnostic evaluation and the native render packet
+before writing provenance; compilation alone does not catch missing bindings.
 
 ## Tests
 

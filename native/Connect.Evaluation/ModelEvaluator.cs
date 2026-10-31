@@ -49,7 +49,7 @@ public sealed class ModelEvaluator : IDisposable
     public string FacialCatalog(){CheckThread();return (string)engine.Script.StandRigEvaluation.facialCatalog();}
     public string FacialCommand(string json,double seconds){CheckThread();if(json.Length>32768)throw new ArgumentException("Facial request exceeds 32 KiB");return (string)engine.Script.StandRigEvaluation.facialCommand(json,seconds);}
     public string FacialState(double seconds){CheckThread();return (string)engine.Script.StandRigEvaluation.facialState(seconds);}
-    public string LoadMotion(string json){CheckThread();if(json.Length>4*1024*1024)throw new ArgumentException("Motion exceeds 4 MiB limit");return (string)engine.Script.StandRigEvaluation.loadMotion(json);}
+    public string LoadMotion(string json){CheckThread();if(System.Text.Encoding.UTF8.GetByteCount(json)>ModelDocument.MaxMotionBytes)throw new ArgumentException("Motion exceeds 16 MiB limit");return (string)engine.Script.StandRigEvaluation.loadMotion(json);}
     public string SampleMotion(double seconds){CheckThread();return (string)engine.Script.StandRigEvaluation.motionValues(seconds);}
     public string LoadTrackingProfile(string json,bool preserveState=false){CheckThread();if(json.Length>1024*1024)throw new ArgumentException("Tracking profile exceeds 1 MiB");return (string)engine.Script.StandRigEvaluation.loadTrackingProfile(json,preserveState);}
     public string MapTracking(string json){CheckThread();if(json.Length>64*1024)throw new ArgumentException("Tracking input exceeds 64 KiB");return (string)engine.Script.StandRigEvaluation.mapTracking(json);}

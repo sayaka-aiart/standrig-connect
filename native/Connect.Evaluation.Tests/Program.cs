@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Diagnostics;
 using StandRig.Connect.Evaluation;
-if(args.Length==1&&args[0]=="--model-documents"){ModelDocumentChecks.Run();return;}
+if(args.Length==1&&args[0]=="--model-documents"){ModelDocumentChecks.Run();PackedDocumentChecks.Run();return;}
 if(args.Length==3&&args[0]=="--model-document-file"){ModelDocumentChecks.RunFile(args[1],args[2]);return;}
 if(args.Length==1&&args[0]=="--facial"){FacialChecks.Run();return;}
 if(args.Length>0&&args[0]=="--pitch-profile"){

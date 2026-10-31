@@ -1,7 +1,11 @@
 {
   "repository": "https://github.com/sayaka-aiart/StandRig.git",
-  "commit": "ec9d452ff2018342cf5a41ce7e0abeba7378cb26",
+  "commit": "e22e2f498dbe1dd4779c0f28f6b3486fbf977c60",
   "adapterContract": 1,
-  "sha256": "c4ed92cf17a825746c06c9f37113ddf483c140f3d81cf21e537e2a44f4cc1f13",
-  "bytes": 296802
+  "packedOffsetsAdapter": {
+    "version": 1,
+    "sha256": "f2648db92085e0ec38a74d721c8d9c29c4e06cef7786d9a7d523bac4c468863a"
+  },
+  "sha256": "2ae26e4a4398d8c260b190d93db9756654703eecbd773e9bfcfbd225b3d807bd",
+  "bytes": 314047
 }

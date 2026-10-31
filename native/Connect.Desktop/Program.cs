@@ -289,7 +289,7 @@ internal sealed partial class MainWindow : Form
         openMotion.Click+=(_,_)=>{
             using var dialog=new OpenFileDialog {Filter="StandRig motion (*.json)|*.json",CheckFileExists=true};
             if(dialog.ShowDialog()!=DialogResult.OK)return;
-            try{if(new FileInfo(dialog.FileName).Length>4*1024*1024)throw new ArgumentException("モーションは4 MiB以下にしてください");SendMotion(MotionAction.Load,File.ReadAllText(dialog.FileName));}catch(Exception ex){MessageBox.Show(ex.Message);}
+            try{if(new FileInfo(dialog.FileName).Length>ModelDocument.MaxMotionBytes)throw new ArgumentException("モーションは16 MiB以下にしてください");SendMotion(MotionAction.Load,File.ReadAllText(dialog.FileName));}catch(Exception ex){MessageBox.Show(ex.Message);}
         };
         motionControls.Controls.Add(openMotion);
         foreach(var item in new[]{("再生",MotionAction.Play),("一時停止",MotionAction.Pause),("モーション停止",MotionAction.Stop)}){

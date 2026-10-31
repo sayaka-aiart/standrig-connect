@@ -1,6 +1,6 @@
 var StandRigEvaluation = (function(exports) {
 	Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/types.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/types.ts
 	var RIG_SCHEMA_VERSION = "0.1.0";
 	var PARAMETER_IDS = [
 		"ParamAngleX",
@@ -39,7 +39,86 @@ var StandRigEvaluation = (function(exports) {
 		"curve"
 	];
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/migration.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/packedRig.ts
+	function orderFor(mesh) {
+		let a = 2166136261, b = 3339675911;
+		for (const vertex of mesh.vertices) {
+			const text = `${vertex.id.length}:${vertex.id};`;
+			for (let i = 0; i < text.length; i++) {
+				a = Math.imul(a ^ text.charCodeAt(i), 16777619);
+				b = Math.imul(b ^ text.charCodeAt(i), 2246822519);
+			}
+		}
+		return `ids-v1:${(a >>> 0).toString(16)}:${(b >>> 0).toString(16)}`;
+	}
+	function decode$1(text, expected) {
+		if (typeof text !== "string" || text.length !== Math.ceil(expected / 3) * 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(text)) throw Error("Invalid packed offset data");
+		const binary = atob(text);
+		if (binary.length !== expected) throw Error("Packed offset byte count mismatch");
+		return Uint8Array.from(binary, (c) => c.charCodeAt(0));
+	}
+	function mapRig(rig, visit) {
+		return {
+			...rig,
+			parts: rig.parts.map((part) => {
+				const mesh = part.artMesh;
+				if (!mesh) return part;
+				const order = orderFor(mesh), ids = new Map(mesh.vertices.map((v, i) => [v.id, i]));
+				return {
+					...part,
+					artMesh: {
+						...mesh,
+						bindings: mesh.bindings?.map((b) => ({
+							...b,
+							keys: b.keys.map((k) => visit(k, mesh, order, ids))
+						})),
+						multiBindings: mesh.multiBindings?.map((b) => ({
+							...b,
+							keyforms: b.keyforms.map((k) => visit(k, mesh, order, ids))
+						})),
+						blendShapes: mesh.blendShapes?.map((k) => visit(k, mesh, order, ids))
+					}
+				};
+			})
+		};
+	}
+	function unpackRigDocument(value) {
+		if (!value || typeof value !== "object" || value.format !== "standrig-packed") return value;
+		const envelope = value;
+		if (envelope.version !== 1) throw Error("Unsupported packed model version");
+		const rig = envelope.rig;
+		if (!rig || !Array.isArray(rig.parts)) throw Error("Invalid packed model");
+		let expanded = 0;
+		return mapRig(rig, (key, mesh, order) => {
+			if (key.packedOffsets === void 0) return key;
+			if (key.offsets !== void 0) throw Error("Ambiguous packed offsets");
+			const block = key.packedOffsets;
+			if (!block || block.version !== 1 || block.vertexCount !== mesh.vertices.length || block.order !== order || ![
+				"f64",
+				"f32",
+				"i16"
+			].includes(block.encoding)) throw Error("Packed offset topology or encoding mismatch");
+			const indices = block.indices ?? mesh.vertices.map((_, i) => i);
+			if (!Array.isArray(indices) || indices.length > mesh.vertices.length || indices.some((i) => !Number.isInteger(i) || i < 0 || i >= mesh.vertices.length) || new Set(indices).size !== indices.length) throw Error("Invalid packed offset indices");
+			const width = block.encoding === "i16" ? 2 : block.encoding === "f32" ? 4 : 8;
+			expanded += indices.length;
+			if (expanded > 8e6) throw Error("Packed model expansion limit exceeded");
+			const bytes = decode$1(block.data, indices.length * 2 * width), view = new DataView(bytes.buffer);
+			const read = (i) => block.encoding === "i16" ? view.getInt16(i * width, true) / 32 : block.encoding === "f32" ? view.getFloat32(i * width, true) : view.getFloat64(i * width, true);
+			const offsets = indices.map((index, i) => {
+				const x = read(i * 2), y = read(i * 2 + 1);
+				if (!Number.isFinite(x) || !Number.isFinite(y)) throw Error("Non-finite packed offsets");
+				return {
+					vertexId: mesh.vertices[index].id,
+					x,
+					y
+				};
+			});
+			return Object.fromEntries(Object.entries(key).map(([name, value]) => name === "packedOffsets" ? ["offsets", offsets] : [name, value]));
+		});
+	}
+	//#endregion
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/migration.ts
 	var CURRENT_RIG_SCHEMA_VERSION = RIG_SCHEMA_VERSION;
 	var RigMigrationError = class extends Error {
 		code;
@@ -55,6 +134,7 @@ var StandRigEvaluation = (function(exports) {
 	* not silently normalize or rewrite a model that is already current.
 	*/
 	function migrateRigDocument(value) {
+		value = unpackRigDocument(value);
 		if (!isRecord(value)) throw invalid("Rig document must be an object");
 		if (typeof value.schemaVersion !== "string" || !value.schemaVersion.trim()) throw invalid("Rig document is missing schemaVersion");
 		if (value.schemaVersion !== CURRENT_RIG_SCHEMA_VERSION) throw new RigMigrationError("unsupported-version", `Unsupported rig schemaVersion ${value.schemaVersion}; expected ${CURRENT_RIG_SCHEMA_VERSION}`);
@@ -79,7 +159,100 @@ var StandRigEvaluation = (function(exports) {
 		return new RigMigrationError("invalid-document", message);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/bindingPreparation.ts
+	//#region scripts/evaluation/packed-rig.ts
+	var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	function bytes(text, length) {
+		if (typeof text !== "string" || text.length !== Math.ceil(length / 3) * 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(text) || text.length / 4 * 3 - (text.endsWith("==") ? 2 : text.endsWith("=") ? 1 : 0) !== length) throw Error("Invalid packed offset data");
+		const result = new Uint8Array(length);
+		let out = 0;
+		for (let i = 0; i < text.length; i += 4) {
+			const n = alphabet.indexOf(text[i]) << 18 | alphabet.indexOf(text[i + 1]) << 12 | (text[i + 2] === "=" ? 0 : alphabet.indexOf(text[i + 2])) << 6 | (text[i + 3] === "=" ? 0 : alphabet.indexOf(text[i + 3]));
+			if (out < length) result[out++] = n >>> 16 & 255;
+			if (out < length) result[out++] = n >>> 8 & 255;
+			if (out < length) result[out++] = n & 255;
+		}
+		return result;
+	}
+	function vertexOrder(vertices) {
+		let a = 2166136261, b = 3339675911;
+		for (const vertex of vertices) {
+			if (typeof vertex?.id !== "string") throw Error("Invalid packed vertex ID");
+			const text = `${vertex.id.length}:${vertex.id};`;
+			for (let i = 0; i < text.length; i++) {
+				a = Math.imul(a ^ text.charCodeAt(i), 16777619);
+				b = Math.imul(b ^ text.charCodeAt(i), 2246822519);
+			}
+		}
+		return `ids-v1:${(a >>> 0).toString(16)}:${(b >>> 0).toString(16)}`;
+	}
+	function unpackModel(value, maximumOffsets = 8e6) {
+		if (!Number.isSafeInteger(maximumOffsets) || maximumOffsets < 0 || maximumOffsets > 8e6) throw Error("Invalid packed offset budget");
+		if (value?.format === "standrig-bundle") {
+			if (value.version !== 1) throw Error("Unsupported model bundle version");
+			value = value.rig;
+		}
+		if (value?.format !== "standrig-packed") return value;
+		if (value.version !== 1 || !value.rig || !Array.isArray(value.rig.parts)) throw Error("Unsupported packed model");
+		let expanded = 0;
+		const parts = value.rig.parts.map((part) => {
+			const mesh = part.artMesh;
+			if (!mesh) return part;
+			if (!Array.isArray(mesh.vertices)) throw Error("Invalid packed mesh");
+			const order = vertexOrder(mesh.vertices), n = mesh.vertices.length;
+			const key = (key) => {
+				if (key.packedOffsets === void 0) return key;
+				const block = key.packedOffsets;
+				if (key.offsets !== void 0 || !block || block.version !== 1 || block.vertexCount !== n || block.order !== order || ![
+					"i16",
+					"f32",
+					"f64"
+				].includes(block.encoding)) throw Error("Packed offset topology or encoding mismatch");
+				const indices = block.indices ?? mesh.vertices.map((_, i) => i);
+				if (!Array.isArray(indices) || indices.length > n || indices.some((i) => !Number.isInteger(i) || i < 0 || i >= n) || new Set(indices).size !== indices.length) throw Error("Invalid packed offset indices");
+				expanded += indices.length;
+				if (expanded > maximumOffsets) throw Error("Packed model expansion limit exceeded");
+				const width = block.encoding === "i16" ? 2 : block.encoding === "f32" ? 4 : 8, data = bytes(block.data, indices.length * 2 * width), view = new DataView(data.buffer);
+				const read = (i) => block.encoding === "i16" ? view.getInt16(i * width, true) / 32 : block.encoding === "f32" ? view.getFloat32(i * width, true) : view.getFloat64(i * width, true);
+				const offsets = indices.map((index, i) => {
+					const x = read(i * 2), y = read(i * 2 + 1);
+					if (!Number.isFinite(x) || !Number.isFinite(y)) throw Error("Non-finite packed offsets");
+					return {
+						vertexId: mesh.vertices[index].id,
+						x,
+						y
+					};
+				});
+				return Object.fromEntries(Object.entries(key).map(([name, v]) => name === "packedOffsets" ? ["offsets", offsets] : [name, v]));
+			};
+			return {
+				...part,
+				artMesh: {
+					...mesh,
+					bindings: mesh.bindings?.map((b) => ({
+						...b,
+						keys: b.keys.map(key)
+					})),
+					multiBindings: mesh.multiBindings?.map((b) => ({
+						...b,
+						keyforms: b.keyforms.map(key)
+					})),
+					blendShapes: mesh.blendShapes?.map(key)
+				}
+			};
+		});
+		return {
+			...value.rig,
+			parts
+		};
+	}
+	//#endregion
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/evaluationCache.ts
+	var active;
+	function evaluationCache() {
+		return active;
+	}
+	//#endregion
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/bindingPreparation.ts
 	function prepareRigBindingOrder(rig) {
 		for (const part of rig.parts) {
 			sortBindings(part.bindings);
@@ -106,10 +279,13 @@ var StandRigEvaluation = (function(exports) {
 		binding.keyforms.sort((a, b) => (a.inputs[x] ?? 0) - (b.inputs[x] ?? 0) || (a.inputs[y] ?? 0) - (b.inputs[y] ?? 0));
 	}
 	function sortArtMeshMultiBindings(bindings) {
-		for (const binding of bindings ?? []) {
-			const [x, y] = binding.parameters;
-			binding.keyforms.sort((a, b) => (a.inputs[x] ?? 0) - (b.inputs[x] ?? 0) || (a.inputs[y] ?? 0) - (b.inputs[y] ?? 0));
-		}
+		for (const binding of bindings ?? []) binding.keyforms.sort((a, b) => {
+			for (const parameter of binding.parameters) {
+				const delta = (a.inputs[parameter] ?? 0) - (b.inputs[parameter] ?? 0);
+				if (delta) return delta;
+			}
+			return 0;
+		});
 	}
 	function sortWarpPins(pins) {
 		for (const pin of pins ?? []) {
@@ -121,8 +297,11 @@ var StandRigEvaluation = (function(exports) {
 		}
 	}
 	function sortedKeysOrCopy(keys) {
-		for (let i = 1; i < keys.length; i++) if (keys[i - 1].input > keys[i].input) return [...keys].sort((a, b) => a.input - b.input);
-		return keys;
+		const sorted = () => {
+			for (let i = 1; i < keys.length; i++) if (keys[i - 1].input > keys[i].input) return [...keys].sort((a, b) => a.input - b.input);
+			return keys;
+		};
+		return evaluationCache()?.get("sorted-keys", keys, sorted) ?? sorted();
 	}
 	function orderedAxis(values) {
 		const axis = [...values];
@@ -130,7 +309,7 @@ var StandRigEvaluation = (function(exports) {
 		return axis;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/bindings.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/bindings.ts
 	var INTERPOLATION_SET = new Set(PARAMETER_INTERPOLATIONS);
 	function isParameterInterpolation(value) {
 		return typeof value === "string" && INTERPOLATION_SET.has(value);
@@ -191,7 +370,7 @@ var StandRigEvaluation = (function(exports) {
 		return clamped;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/artMeshBlendShape.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/artMeshBlendShape.ts
 	/** Sample a neutral-to-delta ArtMesh shape without changing the neutral mesh. */
 	function sampleArtMeshBlendShape(shape, input) {
 		if (!Number.isFinite(input) || !Number.isFinite(shape.neutralInput) || !Number.isFinite(shape.targetInput) || shape.neutralInput === shape.targetInput) return /* @__PURE__ */ new Map();
@@ -209,7 +388,70 @@ var StandRigEvaluation = (function(exports) {
 		return applyParameterInterpolation(normalizeParameterInterpolation(shape.interpolation), amount, shape.curve);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/extendedBlendShape.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/parameterGrid.ts
+	function indexGrid(parameters, keys) {
+		const axes = parameters.map(() => /* @__PURE__ */ new Set()), points = /* @__PURE__ */ new Map();
+		for (const key of keys ?? []) {
+			const coordinates = parameters.map((p) => key?.inputs?.[p]);
+			if (!coordinates.every(Number.isFinite)) continue;
+			coordinates.forEach((value, axis) => axes[axis].add(value));
+			points.set(coordinates.join("|"), key);
+		}
+		return {
+			axes: axes.map((axis) => [...axis].sort((a, b) => a - b)),
+			points
+		};
+	}
+	/** Missing cells yield no sample rather than inventing a deformation. */
+	function sampleParameterGrid(parameters, keys, values, interpolation, curve) {
+		if (!validGridParameters(parameters)) return [];
+		const indexes = Array.isArray(keys) ? evaluationCache()?.get("parameter-grids", keys, () => /* @__PURE__ */ new WeakMap()) : void 0;
+		let index = indexes?.get(parameters);
+		if (!index) {
+			index = indexGrid(parameters, keys);
+			indexes?.set(parameters, index);
+		}
+		const { axes, points } = index;
+		const spans = axes.map((ordered, i) => {
+			if (ordered.length < 2) return void 0;
+			const raw = values[parameters[i]] ?? 0;
+			const value = Math.max(ordered[0], Math.min(ordered.at(-1), raw));
+			let lo = 0, hi = ordered.length - 2;
+			while (lo < hi) {
+				const mid = lo + hi >>> 1;
+				if (ordered[mid + 1] < value) lo = mid + 1;
+				else hi = mid;
+			}
+			const low = ordered[lo], high = ordered[lo + 1];
+			return {
+				low,
+				high,
+				t: applyParameterInterpolation(normalizeParameterInterpolation(interpolation), (value - low) / (high - low), curve)
+			};
+		});
+		if (spans.some((span) => !span)) return [];
+		const result = [];
+		for (let corner = 0; corner < 2 ** parameters.length; corner++) {
+			let weight = 1;
+			const coordinates = spans.map((span, axis) => {
+				const high = Boolean(corner & 1 << axis);
+				weight *= high ? span.t : 1 - span.t;
+				return high ? span.high : span.low;
+			});
+			const key = points.get(coordinates.join("|"));
+			if (!key) return [];
+			result.push({
+				key,
+				weight
+			});
+		}
+		return result;
+	}
+	function validGridParameters(parameters) {
+		return Array.isArray(parameters) && [2, 3].includes(parameters.length) && parameters.every((p) => typeof p === "string" && p.trim().length > 0) && new Set(parameters).size === parameters.length;
+	}
+	//#endregion
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/extendedBlendShape.ts
 	var blendWeight = (shape, values) => sampleArtMeshBlendShapeWeight(shape, values[shape.parameter] ?? shape.neutralInput);
 	function applyTransformShapes(pose, shapes, values) {
 		for (const shape of shapes ?? []) {
@@ -222,7 +464,7 @@ var StandRigEvaluation = (function(exports) {
 		}
 	}
 	function resolveSharedShape(field, shapes, values) {
-		if (!field || !shapes?.some((s) => s.sharedPoints?.length) && !field.controlPoints.some((p) => p.bindings?.length)) return field;
+		if (!field || !shapes?.some((s) => s.sharedPoints?.length) && !field.controlPoints.some((p) => p.bindings?.length || p.multiBindings?.length)) return field;
 		const result = {
 			...field,
 			bounds: { ...field.bounds },
@@ -231,6 +473,12 @@ var StandRigEvaluation = (function(exports) {
 		};
 		for (const point of result.controlPoints) for (const binding of (point.bindings ?? []).slice(0, 16)) {
 			const value = sampleBinding(binding, values[binding.parameter] ?? 0);
+			point[binding.property] = binding.additive === false ? value : point[binding.property] + value;
+		}
+		for (const point of result.controlPoints) for (const binding of (point.multiBindings ?? []).slice(0, 16)) {
+			const corners = sampleParameterGrid(binding.parameters, binding.keyforms, values, binding.interpolation, binding.curve);
+			if (!corners.length) continue;
+			const value = corners.reduce((sum, corner) => sum + corner.key.value * corner.weight, 0);
 			point[binding.property] = binding.additive === false ? value : point[binding.property] + value;
 		}
 		const pointsById = /* @__PURE__ */ new Map();
@@ -255,7 +503,7 @@ var StandRigEvaluation = (function(exports) {
 		return Math.min(1, Math.max(0, base + (glue.blendShapes ?? []).reduce((sum, s) => sum + s.strength * blendWeight(s, values), 0)));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/multiBindings.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/multiBindings.ts
 	function sampleMultiParameterBinding(binding, values) {
 		if (!Array.isArray(binding.parameters) || binding.parameters.length !== 2) return void 0;
 		const [xParameter, yParameter] = binding.parameters;
@@ -266,7 +514,7 @@ var StandRigEvaluation = (function(exports) {
 		for (const keyform of binding.keyforms ?? []) {
 			const x = keyform?.inputs?.[xParameter];
 			const y = keyform?.inputs?.[yParameter];
-			if (!finite$5(x) || !finite$5(y) || !finite$5(keyform.value)) continue;
+			if (!finite$4(x) || !finite$4(y) || !finite$4(keyform.value)) continue;
 			xs.add(x);
 			ys.add(y);
 			points.set(pointKey(x, y), keyform.value);
@@ -286,10 +534,10 @@ var StandRigEvaluation = (function(exports) {
 			q10,
 			q01,
 			q11
-		].every(finite$5)) return void 0;
+		].every(finite$4)) return void 0;
 		const interpolation = normalizeParameterInterpolation(binding.interpolation);
-		const tx = applyParameterInterpolation(interpolation, ratio$1(values[xParameter] ?? 0, xSpan.low, xSpan.high), binding.curve);
-		const ty = applyParameterInterpolation(interpolation, ratio$1(values[yParameter] ?? 0, ySpan.low, ySpan.high), binding.curve);
+		const tx = applyParameterInterpolation(interpolation, ratio(values[xParameter] ?? 0, xSpan.low, xSpan.high), binding.curve);
+		const ty = applyParameterInterpolation(interpolation, ratio(values[yParameter] ?? 0, ySpan.low, ySpan.high), binding.curve);
 		const bottom = q00 + (q10 - q00) * tx;
 		return bottom + (q01 + (q11 - q01) * tx - bottom) * ty;
 	}
@@ -305,17 +553,17 @@ var StandRigEvaluation = (function(exports) {
 			high: axis[axis.length - 1]
 		};
 	}
-	function ratio$1(value, low, high) {
+	function ratio(value, low, high) {
 		return Math.min(1, Math.max(0, (value - low) / (high - low || 1)));
 	}
 	function pointKey(x, y) {
 		return `${x}\u0000${y}`;
 	}
-	function finite$5(value) {
+	function finite$4(value) {
 		return typeof value === "number" && Number.isFinite(value);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/warp.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/warp.ts
 	var resolvedPinScopes = /* @__PURE__ */ new WeakMap();
 	function defaultWarpDeformer() {
 		return {
@@ -600,7 +848,7 @@ var StandRigEvaluation = (function(exports) {
 		return t * t * (3 - 2 * t);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/sharedWarp.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/sharedWarp.ts
 	/** Compile a snapshot for repeated sampling within one evaluation frame. */
 	function createSharedWarpSampler(field) {
 		const snapshot = {
@@ -632,8 +880,8 @@ var StandRigEvaluation = (function(exports) {
 				const a = y0 * stride + x0, b = y0 * stride + x1;
 				const c = y1 * stride + x0, d = y1 * stride + x1;
 				return {
-					x: bilinear$1(offsetsX[a], offsetsX[b], offsetsX[c], offsetsX[d], tx, ty),
-					y: bilinear$1(offsetsY[a], offsetsY[b], offsetsY[c], offsetsY[d], tx, ty)
+					x: bilinear(offsetsX[a], offsetsX[b], offsetsX[c], offsetsX[d], tx, ty),
+					y: bilinear(offsetsY[a], offsetsY[b], offsetsY[c], offsetsY[d], tx, ty)
 				};
 			};
 		}
@@ -669,8 +917,8 @@ var StandRigEvaluation = (function(exports) {
 		};
 		const q00 = offset(x0, y0), q10 = offset(x1, y0), q01 = offset(x0, y1), q11 = offset(x1, y1);
 		return {
-			x: bilinear$1(q00.offsetX, q10.offsetX, q01.offsetX, q11.offsetX, tx, ty),
-			y: bilinear$1(q00.offsetY, q10.offsetY, q01.offsetY, q11.offsetY, tx, ty)
+			x: bilinear(q00.offsetX, q10.offsetX, q01.offsetX, q11.offsetX, tx, ty),
+			y: bilinear(q00.offsetY, q10.offsetY, q01.offsetY, q11.offsetY, tx, ty)
 		};
 	}
 	function warpSharedFieldPoint(field, x, y) {
@@ -683,14 +931,14 @@ var StandRigEvaluation = (function(exports) {
 	function hasSharedWarpFieldEffect(field) {
 		return Boolean(field?.enabled && field.controlPoints.some((point) => point.enabled !== false && (Math.abs(point.offsetX) > 1e-4 || Math.abs(point.offsetY) > 1e-4)));
 	}
-	function bilinear$1(q00, q10, q01, q11, tx, ty) {
+	function bilinear(q00, q10, q01, q11, tx, ty) {
 		return q00 * (1 - tx) * (1 - ty) + q10 * tx * (1 - ty) + q01 * (1 - tx) * ty + q11 * tx * ty;
 	}
 	function clamp$2(value, min, max) {
 		return Math.min(max, Math.max(min, value));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/deformers.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/deformers.ts
 	function deformerForPart(part, deformers) {
 		if (part.deformerId) return deformers.find((deformer) => deformer.id === part.deformerId);
 		return deformers.find((deformer) => deformer.targetPartIds?.includes(part.id));
@@ -984,7 +1232,47 @@ var StandRigEvaluation = (function(exports) {
 		return values;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/evaluator.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/partAffine.ts
+	var FIELDS = [
+		"a",
+		"b",
+		"c",
+		"d",
+		"e",
+		"f"
+	];
+	var identity = () => ({
+		a: 1,
+		b: 0,
+		c: 0,
+		d: 1,
+		e: 0,
+		f: 0
+	});
+	function samplePartAffine(binding, values) {
+		const corners = sampleParameterGrid(binding.parameters, binding.keyforms, values);
+		if (!corners.length) return identity();
+		const result = identity();
+		for (const field of FIELDS) result[field] = corners.reduce((value, corner) => value + corner.key.matrix[field] * corner.weight, 0);
+		return result;
+	}
+	function resolvePartAffine(part, values) {
+		let result = identity();
+		for (const binding of part.affineBindings ?? []) {
+			const next = samplePartAffine(binding, values), left = result;
+			result = {
+				a: next.a * left.a + next.c * left.b,
+				b: next.b * left.a + next.d * left.b,
+				c: next.a * left.c + next.c * left.d,
+				d: next.b * left.c + next.d * left.d,
+				e: next.a * left.e + next.c * left.f + next.e,
+				f: next.b * left.e + next.d * left.f + next.f
+			};
+		}
+		return result;
+	}
+	//#endregion
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/evaluator.ts
 	var MIN_SCALE = .001;
 	/**
 	* Resolve one complete model frame for every renderer.
@@ -1076,7 +1364,7 @@ var StandRigEvaluation = (function(exports) {
 			const activeWarp = mergeResolvedWarpDeformers(parentComputed.warp, deformerComputed?.warp);
 			const result = {
 				parameterValues: values,
-				matrix: multiplyMatrices(parentMatrix, localMatrix),
+				matrix: multiplyMatrices(parentMatrix, part.affineBindings?.length ? multiplyMatrices(localMatrix, resolvePartAffine(part, values)) : localMatrix),
 				parentMatrix,
 				opacity: parentComputed.opacity * (deformerComputed?.opacity ?? 1) * pose.opacity,
 				visible: parentComputed.visible && (deformerComputed?.visible ?? true) && part.visible,
@@ -1380,91 +1668,211 @@ var StandRigEvaluation = (function(exports) {
 		return multiplyMatrices(multiplyMatrices(multiplyMatrices(translateMatrix(deformer.origin.x, deformer.origin.y), multiplyMatrices(translateMatrix(pose.x, pose.y), rotateMatrix(pose.rotation))), scaleMatrix(safeScale(pose.scaleX), safeScale(pose.scaleY))), translateMatrix(-deformer.origin.x, -deformer.origin.y));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/artMeshMulti.ts
-	function sampleMultiArtMeshBinding(binding, values) {
-		const [xParameter, yParameter] = binding.parameters ?? [];
-		if (!xParameter || !yParameter || xParameter === yParameter) return /* @__PURE__ */ new Map();
-		const points = /* @__PURE__ */ new Map();
-		const xs = /* @__PURE__ */ new Set();
-		const ys = /* @__PURE__ */ new Set();
-		for (const keyform of binding.keyforms ?? []) {
-			const x = keyform?.inputs?.[xParameter];
-			const y = keyform?.inputs?.[yParameter];
-			if (!finite$4(x) || !finite$4(y)) continue;
-			xs.add(x);
-			ys.add(y);
-			points.set(key(x, y), keyform);
-		}
-		const xSpan = span(orderedAxis(xs), values[xParameter] ?? 0);
-		const ySpan = span(orderedAxis(ys), values[yParameter] ?? 0);
-		if (!xSpan || !ySpan) return /* @__PURE__ */ new Map();
-		const corners = [
-			points.get(key(xSpan.low, ySpan.low)),
-			points.get(key(xSpan.high, ySpan.low)),
-			points.get(key(xSpan.low, ySpan.high)),
-			points.get(key(xSpan.high, ySpan.high))
-		];
-		if (corners.some((corner) => !corner)) return /* @__PURE__ */ new Map();
-		const tx = applyParameterInterpolation(normalizeParameterInterpolation(binding.interpolation), ratio(values[xParameter] ?? 0, xSpan.low, xSpan.high), binding.curve);
-		const ty = applyParameterInterpolation(normalizeParameterInterpolation(binding.interpolation), ratio(values[yParameter] ?? 0, ySpan.low, ySpan.high), binding.curve);
-		const offsets = corners.map((corner) => offsetsForKey(corner));
-		const ids = new Set(offsets.flatMap((entry) => [...entry.keys()]));
-		const result = /* @__PURE__ */ new Map();
-		for (const id of ids) {
-			const q00 = offsets[0].get(id) ?? {
-				x: 0,
-				y: 0
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/artMeshSurface.ts
+	var GRID = 8;
+	var cache = /* @__PURE__ */ new WeakMap();
+	/** Compose a measured 2D surface with expression/physics geometry. Adding the
+	* angle offsets by vertex ID alone cannot rotate an already closed eyelid. */
+	function applyArtMeshSurface(mesh, sampled, offsets) {
+		if (!sampled.size || ![...sampled.values()].some((p) => p.x !== 0 || p.y !== 0)) return;
+		let geometry;
+		for (const vertex of mesh.vertices) {
+			const current = offsets.get(vertex.id);
+			if (!current || current.x === 0 && current.y === 0) {
+				const delta = sampled.get(vertex.id);
+				if (delta) offsets.set(vertex.id, { ...delta });
+				continue;
+			}
+			geometry ??= geometryFor(mesh);
+			const point = {
+				x: vertex.x + current.x,
+				y: vertex.y + current.y
 			};
-			const q10 = offsets[1].get(id) ?? {
-				x: 0,
-				y: 0
-			};
-			const q01 = offsets[2].get(id) ?? {
-				x: 0,
-				y: 0
-			};
-			const q11 = offsets[3].get(id) ?? {
-				x: 0,
-				y: 0
-			};
-			result.set(id, {
-				x: bilinear(q00.x, q10.x, q01.x, q11.x, tx, ty),
-				y: bilinear(q00.y, q10.y, q01.y, q11.y, tx, ty)
+			const triangle = locate(geometry, point);
+			if (!triangle) continue;
+			const [u, v] = barycentric(triangle, point), weights = [
+				1 - u - v,
+				u,
+				v
+			];
+			let x = 0, y = 0;
+			for (let i = 0; i < 3; i++) {
+				const delta = sampled.get(triangle.ids[i]);
+				x += (delta?.x ?? 0) * weights[i];
+				y += (delta?.y ?? 0) * weights[i];
+			}
+			offsets.set(vertex.id, {
+				x: current.x + x,
+				y: current.y + y
 			});
+		}
+	}
+	function geometryFor(mesh) {
+		const old = cache.get(mesh);
+		if (old && old.coordinates.length === mesh.vertices.length * 2 && old.indices.length === mesh.triangles.length && mesh.vertices.every((p, i) => p.id === old.ids[i] && p.x === old.coordinates[i * 2] && p.y === old.coordinates[i * 2 + 1]) && mesh.triangles.every((v, i) => v === old.indices[i])) return old;
+		const xs = mesh.vertices.map((p) => p.x), ys = mesh.vertices.map((p) => p.y);
+		const geometry = {
+			coordinates: mesh.vertices.flatMap((p) => [p.x, p.y]),
+			ids: mesh.vertices.map((p) => p.id),
+			indices: [...mesh.triangles],
+			triangles: [],
+			left: Math.min(...xs),
+			top: Math.min(...ys),
+			width: Math.max(1e-9, Math.max(...xs) - Math.min(...xs)),
+			height: Math.max(1e-9, Math.max(...ys) - Math.min(...ys)),
+			cells: Array.from({ length: GRID * GRID }, () => [])
+		};
+		for (let i = 0; i < mesh.triangles.length; i += 3) {
+			const [a, b, c] = mesh.triangles.slice(i, i + 3).map((j) => mesh.vertices[j]);
+			const bx = b.x - a.x, by = b.y - a.y, cx = c.x - a.x, cy = c.y - a.y, determinant = bx * cy - by * cx;
+			if (Math.abs(determinant) < 1e-12) continue;
+			const triangle = {
+				ids: [
+					a.id,
+					b.id,
+					c.id
+				],
+				a: {
+					x: a.x,
+					y: a.y
+				},
+				bx,
+				by,
+				cx,
+				cy,
+				determinant,
+				left: Math.min(a.x, b.x, c.x),
+				top: Math.min(a.y, b.y, c.y),
+				right: Math.max(a.x, b.x, c.x),
+				bottom: Math.max(a.y, b.y, c.y)
+			};
+			const index = geometry.triangles.push(triangle) - 1;
+			const [left, top] = cell(geometry, triangle.left, triangle.top), [right, bottom] = cell(geometry, triangle.right, triangle.bottom);
+			for (let y = top; y <= bottom; y++) for (let x = left; x <= right; x++) geometry.cells[y * GRID + x].push(index);
+		}
+		cache.set(mesh, geometry);
+		return geometry;
+	}
+	function cell(g, x, y) {
+		return [Math.max(0, Math.min(GRID - 1, Math.floor((x - g.left) / g.width * GRID))), Math.max(0, Math.min(GRID - 1, Math.floor((y - g.top) / g.height * GRID)))];
+	}
+	function barycentric(t, p) {
+		const x = p.x - t.a.x, y = p.y - t.a.y;
+		return [(x * t.cy - y * t.cx) / t.determinant, (t.bx * y - t.by * x) / t.determinant];
+	}
+	function locate(g, p) {
+		const [x, y] = cell(g, p.x, p.y);
+		for (const index of g.cells[y * GRID + x]) {
+			const t = g.triangles[index], [u, v] = barycentric(t, p);
+			if (u >= -1e-9 && v >= -1e-9 && u + v <= 1.000000001) return t;
+		}
+		let best, distance = Infinity;
+		for (const t of g.triangles) {
+			const dx = Math.max(t.left - p.x, 0, p.x - t.right), dy = Math.max(t.top - p.y, 0, p.y - t.bottom);
+			if (dx * dx + dy * dy > distance) continue;
+			const a = t.a, b = {
+				x: a.x + t.bx,
+				y: a.y + t.by
+			}, c = {
+				x: a.x + t.cx,
+				y: a.y + t.cy
+			};
+			const d = Math.min(segmentDistance(p, a, b), segmentDistance(p, b, c), segmentDistance(p, c, a));
+			if (d < distance) {
+				distance = d;
+				best = t;
+			}
+		}
+		return best;
+	}
+	function segmentDistance(p, a, b) {
+		const x = b.x - a.x, y = b.y - a.y, length = x * x + y * y;
+		const t = Math.max(0, Math.min(1, ((p.x - a.x) * x + (p.y - a.y) * y) / (length || 1)));
+		return (p.x - a.x - t * x) ** 2 + (p.y - a.y - t * y) ** 2;
+	}
+	//#endregion
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/artMeshMulti.ts
+	function normalizedOffsets(raw) {
+		const seen = /* @__PURE__ */ new Set();
+		let unique = true;
+		for (const offset of raw) {
+			if (!offset || typeof offset.vertexId !== "string" || !Number.isFinite(offset.x) || !Number.isFinite(offset.y) || seen.has(offset.vertexId)) {
+				unique = false;
+				break;
+			}
+			seen.add(offset.vertexId);
+		}
+		if (unique) return raw;
+		const last = /* @__PURE__ */ new Map();
+		for (const offset of raw) if (offset && typeof offset.vertexId === "string" && Number.isFinite(offset.x) && Number.isFinite(offset.y)) last.set(offset.vertexId, offset);
+		return [...last.values()];
+	}
+	function sampleMultiArtMeshBinding(binding, values) {
+		const result = /* @__PURE__ */ new Map();
+		for (const { key, weight } of sampleParameterGrid(binding.parameters, binding.keyforms, values, binding.interpolation, binding.curve)) {
+			const build = () => normalizedOffsets(key.offsets ?? []);
+			const offsets = evaluationCache()?.get("mesh-offsets", key, build) ?? build();
+			for (const offset of offsets) {
+				const id = offset.vertexId;
+				const previous = result.get(id) ?? {
+					x: 0,
+					y: 0
+				};
+				previous.x += offset.x * weight;
+				previous.y += offset.y * weight;
+				result.set(id, previous);
+			}
 		}
 		return result;
 	}
-	function offsetsForKey(keyform) {
+	//#endregion
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/denseOffsets.ts
+	/** Snapshot-only numeric offset lanes. Editor calls retain the ordinary mutable path. */
+	function sampleDenseMulti(mesh, binding, values) {
+		const cache = evaluationCache();
+		if (!cache) return sampleMultiArtMeshBinding(binding, values);
+		const ids = cache.get("dense-mesh-ids", mesh, () => new Map(mesh.vertices.map((v, i) => [v.id, i])));
+		const keys = cache.get("dense-mesh-keys", mesh, () => /* @__PURE__ */ new WeakMap());
+		const n = mesh.vertices.length, xy = new Float64Array(n * 2), present = new Uint8Array(n);
+		for (const { key, weight } of sampleParameterGrid(binding.parameters, binding.keyforms, values, binding.interpolation, binding.curve)) {
+			let data = keys.get(key);
+			if (!data) {
+				data = {
+					xy: new Float64Array(n * 2),
+					present: new Uint8Array(n)
+				};
+				for (const o of key.offsets ?? []) {
+					const i = ids.get(o.vertexId);
+					if (i === void 0 || !Number.isFinite(o.x) || !Number.isFinite(o.y)) continue;
+					data.xy[i * 2] = o.x;
+					data.xy[i * 2 + 1] = o.y;
+					data.present[i] = 1;
+				}
+				keys.set(key, data);
+			}
+			for (let i = 0; i < n; i++) if (data.present[i]) {
+				present[i] = 1;
+				xy[i * 2] += data.xy[i * 2] * weight;
+				xy[i * 2 + 1] += data.xy[i * 2 + 1] * weight;
+			}
+		}
 		const result = /* @__PURE__ */ new Map();
-		for (const offset of keyform.offsets ?? []) if (offset && typeof offset.vertexId === "string" && finite$4(offset.x) && finite$4(offset.y)) result.set(offset.vertexId, {
-			x: offset.x,
-			y: offset.y
+		mesh.vertices.forEach((v, i) => {
+			if (present[i]) result.set(v.id, {
+				x: xy[i * 2],
+				y: xy[i * 2 + 1]
+			});
 		});
 		return result;
 	}
-	function span(axis, value) {
-		if (axis.length < 2) return void 0;
-		const input = Math.min(axis[axis.length - 1], Math.max(axis[0], value));
-		for (let index = 0; index < axis.length - 1; index += 1) if (input >= axis[index] && input <= axis[index + 1]) return {
-			low: axis[index],
-			high: axis[index + 1]
-		};
-	}
-	function ratio(value, low, high) {
-		return Math.min(1, Math.max(0, (value - low) / (high - low || 1)));
-	}
-	function bilinear(q00, q10, q01, q11, tx, ty) {
-		return q00 * (1 - tx) * (1 - ty) + q10 * tx * (1 - ty) + q01 * (1 - tx) * ty + q11 * tx * ty;
-	}
-	function key(x, y) {
-		return `${x}|${y}`;
-	}
-	function finite$4(value) {
-		return typeof value === "number" && Number.isFinite(value);
-	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/artMesh.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/artMesh.ts
 	function isValidArtMesh(mesh, width, height) {
+		if (!(width === void 0 || height === void 0 || finite$3(width) && finite$3(height) && width > 0 && height > 0)) return false;
+		if (mesh && typeof mesh === "object" && evaluationCache()) return evaluationCache().get("valid-artmesh", mesh, () => validateArtMesh(mesh));
+		return validateArtMesh(mesh);
+	}
+	function validateArtMesh(mesh) {
 		if (!mesh || mesh.version !== 1 || typeof mesh.enabled !== "boolean" || !Array.isArray(mesh.vertices) || mesh.vertices.length < 3 || !Array.isArray(mesh.triangles) || mesh.triangles.length < 3 || mesh.triangles.length % 3 !== 0) return false;
 		if (!mesh.generator || ![
 			"eyelid",
@@ -1488,6 +1896,7 @@ var StandRigEvaluation = (function(exports) {
 			if (Math.abs(area) < 1e-4) return false;
 		}
 		for (const binding of mesh.bindings ?? []) {
+			if (binding?.composition !== void 0 && binding.composition !== "surface") return false;
 			if (!binding || typeof binding.parameter !== "string" || !binding.parameter.trim() || !Array.isArray(binding.keys)) return false;
 			for (const key of binding.keys) {
 				if (!key || !finite$3(key.input) || !Array.isArray(key.offsets)) return false;
@@ -1495,9 +1904,10 @@ var StandRigEvaluation = (function(exports) {
 			}
 		}
 		for (const binding of mesh.multiBindings ?? []) {
-			if (!binding || !Array.isArray(binding.parameters) || binding.parameters.length !== 2 || !binding.parameters[0]?.trim() || !binding.parameters[1]?.trim() || binding.parameters[0] === binding.parameters[1] || !Array.isArray(binding.keyforms)) return false;
+			if (binding?.composition !== void 0 && binding.composition !== "surface") return false;
+			if (!binding || !validGridParameters(binding.parameters) || !Array.isArray(binding.keyforms)) return false;
 			for (const keyform of binding.keyforms) {
-				if (!keyform || !keyform.inputs || !finite$3(keyform.inputs[binding.parameters[0]]) || !finite$3(keyform.inputs[binding.parameters[1]]) || !Array.isArray(keyform.offsets)) return false;
+				if (!keyform || !keyform.inputs || binding.parameters.some((parameter) => !finite$3(keyform.inputs[parameter])) || !Array.isArray(keyform.offsets)) return false;
 				for (const offset of keyform.offsets) if (!offset || !ids.has(offset.vertexId) || !finite$3(offset.x) || !finite$3(offset.y)) return false;
 			}
 		}
@@ -1512,7 +1922,6 @@ var StandRigEvaluation = (function(exports) {
 				if (!Array.isArray(weights) || !weights.length || weights.length > 3 || weights.some((entry) => !entry || typeof entry.deformerId !== "string" || !finite$3(entry.weight) || entry.weight < 0)) return false;
 			}
 		}
-		if (width !== void 0 && height !== void 0 && (!finite$3(width) || !finite$3(height) || width <= 0 || height <= 0)) return false;
 		return true;
 	}
 	function applyOffsets(target, sampled, additive) {
@@ -1588,28 +1997,34 @@ var StandRigEvaluation = (function(exports) {
 		}
 		return (values) => {
 			const offsets = /* @__PURE__ */ new Map();
-			for (const binding of mesh.bindings ?? []) applyOffsets(offsets, sampleArtMeshBinding(binding, values[binding.parameter] ?? 0), binding.additive);
-			for (const binding of mesh.multiBindings ?? []) applyOffsets(offsets, sampleMultiArtMeshBinding(binding, values), binding.additive);
+			for (const binding of mesh.bindings ?? []) {
+				if (binding.composition === "surface") continue;
+				applyOffsets(offsets, sampleArtMeshBinding(binding, values[binding.parameter] ?? 0), binding.additive);
+			}
+			for (const binding of mesh.multiBindings ?? []) {
+				if (binding.composition === "surface") continue;
+				applyOffsets(offsets, sampleDenseMulti(mesh, binding, values), binding.additive);
+			}
 			for (const shape of mesh.blendShapes ?? []) applyOffsets(offsets, sampleArtMeshBlendShape(shape, values[shape.parameter] ?? shape.neutralInput), shape.additive);
+			const vertices = () => mesh.vertices.map((vertex) => {
+				const offset = offsets.get(vertex.id);
+				return {
+					...vertex,
+					x: vertex.x + (offset?.x ?? 0),
+					y: vertex.y + (offset?.y ?? 0)
+				};
+			});
+			for (const binding of mesh.multiBindings ?? []) if (binding.composition === "surface") applyArtMeshSurface(mesh, sampleDenseMulti(mesh, binding, values), offsets);
+			for (const binding of mesh.bindings ?? []) if (binding.composition === "surface") applyArtMeshSurface(mesh, sampleArtMeshBinding(binding, values[binding.parameter] ?? 0), offsets);
 			return {
-				vertices: mesh.vertices.map((vertex) => {
-					const offset = offsets.get(vertex.id) ?? {
-						x: 0,
-						y: 0
-					};
-					return {
-						...vertex,
-						x: vertex.x + offset.x,
-						y: vertex.y + offset.y
-					};
-				}),
+				vertices: vertices(),
 				triangles: [...mesh.triangles],
 				topology: mesh.generator.topology === "alpha-contour" ? "alpha-contour" : "rect-grid"
 			};
 		};
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/skinning.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/skinning.ts
 	function applySkinningToVertex(vertex, skinning, transforms) {
 		const weights = skinning.vertexWeights[vertex.id] ?? [];
 		let x = 0;
@@ -1644,12 +2059,12 @@ var StandRigEvaluation = (function(exports) {
 		});
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/glue.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/glue.ts
 	function readRigGlue(rig) {
 		return Array.isArray(rig.glue) ? rig.glue : [];
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/glueWarp.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/glueWarp.ts
 	function resolveGlueWarpForPart(rig, part, state, size, computed, sizeForPart) {
 		const gluePins = gluePinsForPart(rig, part, state, size, computed, sizeForPart);
 		if (!gluePins.length) return state.warp;
@@ -1819,7 +2234,7 @@ var StandRigEvaluation = (function(exports) {
 		return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/sharedWarpProjection.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/sharedWarpProjection.ts
 	/**
 	* Converts a part-local point through its evaluated matrix, applies every
 	* enabled shared field in stable parent-to-child order in stage coordinates,
@@ -1852,7 +2267,7 @@ var StandRigEvaluation = (function(exports) {
 		};
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/glueVertex.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/glueVertex.ts
 	/**
 	* Vertex-level glue ("stitch").
 	*
@@ -2045,7 +2460,7 @@ var StandRigEvaluation = (function(exports) {
 		return Math.min(1, Math.max(0, Number.isFinite(value) ? value : .5));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/mask.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/mask.ts
 	/**
 	* Resolves the closest clip owner from a renderable part up through its part
 	* parents. This lets related interior layers share one alpha-union mask without
@@ -2088,7 +2503,7 @@ var StandRigEvaluation = (function(exports) {
 		return [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))];
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/artPath.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/artPath.ts
 	function readRigArtPaths(part) {
 		return Array.isArray(part.artPaths) ? part.artPaths : [];
 	}
@@ -7134,7 +7549,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/motion.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/motion.ts
 	function object$1(value, keys) {
 		if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((k) => !keys.includes(k))) throw Error("invalid motion object/unknown field");
 	}
@@ -7238,7 +7653,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return Object.fromEntries(clip.tracks.map((t) => [t.parameter, sampleMotionTrack(t, time)]));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/facial.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/facial.ts
 	var jsonClone$1 = (value) => JSON.parse(JSON.stringify(value));
 	var VISEME_IDS = [
 		"A",
@@ -7353,7 +7768,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return jsonClone$1(value);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/runtime/src/facial.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/runtime/src/facial.ts
 	var jsonClone = (value) => JSON.parse(JSON.stringify(value));
 	var weight = (f, now) => f.duration === 0 ? f.to : f.from + (f.to - f.from) * Math.max(0, Math.min(1, (now - f.start) / f.duration));
 	var finiteSaturation = (v) => Math.max(-Number.MAX_VALUE, Math.min(Number.MAX_VALUE, v));
@@ -7519,7 +7934,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}
 	};
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/runtime/src/physicsStepping.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/runtime/src/physicsStepping.ts
 	/** Bounded catch-up for a live renderer. Geometry is evaluated only once. */
 	function prepareLivePhysicsStep(rig, values, previous, state, elapsed, time) {
 		const duration = Math.min(.25, Math.max(1e-4, Number.isFinite(elapsed) ? elapsed : 1 / 60));
@@ -7543,7 +7958,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		};
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/tint.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/tint.ts
 	function validatePartTint(tint) {
 		if (!tint) return [];
 		const issues = [];
@@ -7567,7 +7982,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return Math.round(255 * (s * (1 - opacity) + blended * opacity));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/contourShade.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/contourShade.ts
 	function validateContourShade(shade) {
 		return Boolean(shade && /^#[0-9a-fA-F]{6}$/.test(shade.color) && typeof shade.yawParameter === "string" && shade.yawParameter.length && typeof shade.pitchParameter === "string" && shade.pitchParameter.length && Number.isFinite(shade.maxYaw) && shade.maxYaw > 0 && Number.isFinite(shade.maxPitch) && shade.maxPitch > 0 && Number.isFinite(shade.width) && shade.width > 0 && shade.width <= .5 && Number.isFinite(shade.strength) && shade.strength >= 0 && shade.strength <= 1 && Number.isFinite(shade.axisStrength) && shade.axisStrength >= 0 && shade.axisStrength <= 1 && (shade.profile === void 0 || shade.profile === "cheek") && (shade.farContourFade === void 0 || Number.isFinite(shade.farContourFade) && shade.farContourFade >= 0 && shade.farContourFade <= 1) && (shade.nearContourFade === void 0 || Number.isFinite(shade.nearContourFade) && shade.nearContourFade >= 0 && shade.nearContourFade <= 1) && (shade.upContourFade === void 0 || Number.isFinite(shade.upContourFade) && shade.upContourFade >= 0 && shade.upContourFade <= 1) && (shade.upShadowStrength === void 0 || Number.isFinite(shade.upShadowStrength) && shade.upShadowStrength >= 0 && shade.upShadowStrength <= 1) && (shade.lineWidth === void 0 || Number.isFinite(shade.lineWidth) && shade.lineWidth > 0 && shade.lineWidth <= .1));
 	}
@@ -7791,7 +8206,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return entry.processor.render(values);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/ec9d452ff2018342cf5a41ce7e0abeba7378cb26/packages/core/src/alphaReveal.ts
+	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/alphaReveal.ts
 	function validateAlphaReveal(reveal) {
 		return Boolean(reveal && typeof reveal.parameter === "string" && reveal.parameter.length && Number.isFinite(reveal.closed) && Number.isFinite(reveal.open) && reveal.open > reveal.closed && Number.isFinite(reveal.exponent) && reveal.exponent > 0 && reveal.exponent <= 4 && (reveal.anchor === void 0 || Number.isFinite(reveal.anchor) && reveal.anchor >= 0 && reveal.anchor <= 1));
 	}
@@ -7966,7 +8381,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		});
 	}
 	function load(json) {
-		const next = prepareRigBindingOrder(migrateRigDocument(JSON.parse(json)));
+		const next = prepareRigBindingOrder(migrateRigDocument(unpackModel(JSON.parse(json))));
 		const defs = parameterDefinitionsForRig$1(next);
 		const parameterIds = /* @__PURE__ */ new Set();
 		for (const d of defs) {

@@ -16,7 +16,7 @@ public sealed class MotionPlayback
     public MotionPlaybackState State=>Volatile.Read(ref state);
     public void Submit(MotionAction action,string? json=null)
     {
-        if(!Enum.IsDefined(action)||action is MotionAction.Seek or MotionAction.Configure||action==MotionAction.Load&&(json==null||json.Length>4*1024*1024))throw new ArgumentException("Invalid motion command or file exceeds 4 MiB");
+        if(!Enum.IsDefined(action)||action is MotionAction.Seek or MotionAction.Configure||action==MotionAction.Load&&(json==null||System.Text.Encoding.UTF8.GetByteCount(json)>ModelDocument.MaxMotionBytes))throw new ArgumentException("Invalid motion command or file exceeds 16 MiB");
         Enqueue(new(action,json));
     }
     public void Seek(double time){if(!double.IsFinite(time)||time<0||time>3600)throw new ArgumentException("Invalid seek time");Enqueue(new(MotionAction.Seek,Time:time));}

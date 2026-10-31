@@ -50,7 +50,7 @@ powershell -NoProfile -File scripts/setup-native-inference.ps1
 The generated evaluator is included; ordinary builds and usage do not need Node.js. Framework-dependent execution requires the .NET 8 Windows Desktop Runtime and ASP.NET Core 8 Runtime.
 
 
-Embedded-image models use `.srig` (JSON content). Existing embedded-image `.json` files remain supported. Renaming an image-free rig.json does not make it a portable Connect model.
+Models use `.srig` (JSON content). Existing embedded-image `.json`, `standrig-packed` v1 and bundles containing packed rigs remain supported. Keep referenced external PNGs beneath the model's directory when opening it. Connect imports these images, and saved model slots retain them independently.
 
 ## Usage
 
@@ -114,7 +114,7 @@ The control window may be minimized. × hides it to the tray; exit through the t
 
 Output resolution is configurable, with a target loop of 60Hz. Higher resolutions increase GPU load and memory use; actual performance depends on model and PC. Rendering, camera and OBS have been exercised locally, not qualified for every GPU, camera or sleep/resume scenario.
 
-Models require suitable parameters and rigging. Both embedded-image rig JSON and `standrig-bundle` v1 are accepted. Models are bounded at 256MiB and image dimensions at 4096px. The renderer prefers the high-performance GPU and budgets textures, including effect copies, to half the available local GPU memory, capped at 2GiB (256MiB if memory information is unavailable). Effects are bounded at 16,777,216 total pixels. Large models increase RAM, GPU memory and load time; 60fps is not guaranteed.
+Models require suitable parameters and rigging. Models are bounded at 384MiB including imported images; rendered image dimensions are bounded at 4096px. The renderer prefers the high-performance GPU and budgets textures, including effect copies, to half the available local GPU memory, capped at 2GiB (256MiB if memory information is unavailable). Effects are bounded at 16,777,216 total pixels. Large models increase RAM, GPU memory and load time; 60fps is not guaranteed. Motion files accept up to 16MiB without thinning authored keys. See [model formats](docs/MODEL-FORMATS.md) for compatibility and validation scope.
 
 `additive` angle-image transitions finish each mesh with normal compositing, then add both premultiplied RGB and alpha once. Complementary weights retain opacity where both source images are opaque. This differs from a glow-style additive color blend. Normal, multiply and screen blending remain unchanged. Live physics advances in bounded small steps even when rendering slows down.
 

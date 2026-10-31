@@ -32,12 +32,12 @@ internal static class ModelDocumentChecks
     }
     public static void RunFile(string path,string directory){
         string model=ModelDocument.Read(path);using var document=JsonDocument.Parse(model);
-        string profile=DefaultTracking.Create(document.RootElement.GetProperty("parameters"));
+        string profile=DefaultTracking.Create(ModelDocument.RigRoot(document.RootElement).GetProperty("parameters"));
         var controls=new TrackingControlsSnapshot(new(),.15,.4,false);
         var store=new ModelSlotStore(directory);var slot=store.Save(null,"Large bundle roundtrip",new(1,model,profile,controls));
         var restored=store.Load(slot.Id);
         if(restored.ModelJson!=model||restored.ProfileJson!=profile)throw new Exception("Large bundle slot changed model/profile");
-        File.WriteAllText(Path.Combine(directory,"result.json"),JsonSerializer.Serialize(new{passed=true,modelBytes=System.Text.Encoding.UTF8.GetByteCount(model),images=document.RootElement.GetProperty("assets").GetArrayLength(),modelPreserved=true,profilePreserved=true}));
+        File.WriteAllText(Path.Combine(directory,"result.json"),JsonSerializer.Serialize(new{passed=true,modelBytes=System.Text.Encoding.UTF8.GetByteCount(model),images=ModelDocument.RigRoot(document.RootElement).GetProperty("assets").GetArrayLength(),modelPreserved=true,profilePreserved=true}));
         Console.WriteLine("PASS large embedded bundle slot save and reload without source changes");
     }
 }

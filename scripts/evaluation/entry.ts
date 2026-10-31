@@ -1,4 +1,5 @@
 import { migrateRigDocument } from '@core/migration';
+import { unpackModel } from './packed-rig';
 import { prepareRigBindingOrder } from '@core/bindingPreparation';
 import { resolveRigFrame } from '@core/evaluator';
 import { parameterDefinitionsForRig, defaultParameterValues } from '@core/parameters';
@@ -36,7 +37,7 @@ let samples=0,coreMs=0,geometryMs=0,samplingMs=0,projectionMs=0,validationMs=0;
 let meshCache=new Map<string,any>();
 export function profile(){return JSON.stringify({samples,coreMs:coreMs/Math.max(1,samples-10),geometryMs:geometryMs/Math.max(1,samples-10),samplingMs:samplingMs/Math.max(1,samples-10),projectionMs:projectionMs/Math.max(1,samples-10),validationMs:validationMs/Math.max(1,samples-10),clock:'Date.now milliseconds; approximate'});}
 export function load(json:string){
- const next=prepareRigBindingOrder(migrateRigDocument(JSON.parse(json)));
+ const next=prepareRigBindingOrder(migrateRigDocument(unpackModel(JSON.parse(json))));
  const defs=parameterDefinitionsForRig(next);
  const parameterIds=new Set();for(const d of defs){if(parameterIds.has(d.id)||![d.min,d.max,d.default].every(Number.isFinite)||d.min>d.max||d.default<d.min||d.default>d.max)throw Error('invalid parameter definition');parameterIds.add(d.id);}
  if(!Number.isFinite(next.stage.width)||!Number.isFinite(next.stage.height)||next.stage.width<=0||next.stage.height<=0)throw Error('invalid stage');
