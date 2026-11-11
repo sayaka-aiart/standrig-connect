@@ -6,10 +6,15 @@ namespace StandRig.Connect.Desktop;
 
 internal static class ModelMotionChecks
 {
-    public static void Run(string model,string motionPath,string directory){
+    public static void Run(string model,string motionPath,string directory,string? size=null){
         directory=Path.GetFullPath(directory);Directory.CreateDirectory(directory);
         string capture=Path.Combine(directory,"frame.png"),pose=Path.Combine(directory,"frame-pose.png");
-        using var surface=new Form{ClientSize=new Size(640,480),ShowInTaskbar=false};
+        // Output size WIDTHxHEIGHT and optional zoom (WIDTHxHEIGHT@ZOOM), as Connect's output view takes them.
+        var sizeAndZoom=(size??"640x480").Split('@');var parts=sizeAndZoom[0].Split('x');
+        double zoom=sizeAndZoom.Length==2&&double.TryParse(sizeAndZoom[1],System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out double parsed)?parsed:1;
+        if(parts.Length!=2||sizeAndZoom.Length>2||!int.TryParse(parts[0],out int width)||!int.TryParse(parts[1],out int height))throw new ArgumentException("Size must be WIDTHxHEIGHT or WIDTHxHEIGHT@ZOOM");
+        var output=new OutputView(width,height,zoom);output.Validate();
+        using var surface=new Form{ClientSize=new Size(width,height),ShowInTaskbar=false};
         var poses=new(string Name,Dictionary<string,double> Values)[]{
             ("neutral",new()),("face-left",new(){{"ParamAngleX",-30}}),("face-right",new(){{"ParamAngleX",30}}),
             ("face-up",new(){{"ParamAngleY",20}}),("face-down",new(){{"ParamAngleY",-20}}),
@@ -20,7 +25,7 @@ internal static class ModelMotionChecks
         using var document=JsonDocument.Parse(json);
         var defaults=document.RootElement.GetProperty("parameters").EnumerateArray().ToDictionary(p=>p.GetProperty("id").GetString()!,p=>p.GetProperty("default").GetDouble());
         var ranges=document.RootElement.GetProperty("parameters").EnumerateArray().ToDictionary(p=>p.GetProperty("id").GetString()!,p=>(Min:p.GetProperty("min").GetDouble(),Max:p.GetProperty("max").GetDouble()));
-        using(var pipeline=new ModelRenderPipeline("",surface.Handle,()=>false,_=>{},capture,physicsEnabled:false,modelJson:json)){
+        using(var pipeline=new ModelRenderPipeline("",surface.Handle,()=>false,_=>{},capture,physicsEnabled:false,modelJson:json,outputView:()=>output)){
             for(int i=0;i<poses.Length;i++){
                 var values=new Dictionary<string,double>(defaults);foreach(var p in poses[i].Values)if(values.ContainsKey(p.Key))values[p.Key]=Math.Clamp(p.Value,ranges[p.Key].Min,ranges[p.Key].Max);
                 pipeline.Step(i/60d,new PoseFrame(i,values));File.Copy(pose,Path.Combine(directory,poses[i].Name+".png"),true);
@@ -32,7 +37,7 @@ internal static class ModelMotionChecks
         int loopFrames=(int)Math.Ceiling(duration*30),totalFrames=loopFrames*2+1;
         var motion=new MotionPlayback();motion.Submit(MotionAction.Load,motionJson);motion.Configure(1,true);motion.Submit(MotionAction.Play);
         int count=0;var snapshots=new List<object>();
-        using(var pipeline=new ModelRenderPipeline("",surface.Handle,()=>false,_=>{},capture,physicsEnabled:true,motion:motion,modelJson:json)){
+        using(var pipeline=new ModelRenderPipeline("",surface.Handle,()=>false,_=>{},capture,physicsEnabled:true,motion:motion,modelJson:json,outputView:()=>output)){
             // One warm-up loop, then record the next. A monotonic fixed clock is independent of diagnostic execution speed.
             for(int frame=0;frame<totalFrames;frame++){
                 bool save=frame>=loopFrames&&((frame-loopFrames)%60==0||frame==totalFrames-1);

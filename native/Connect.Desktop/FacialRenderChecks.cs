@@ -39,6 +39,19 @@ internal static class FacialRenderChecks
                 strength.Value=100;await Task.Delay(300);
                 await Click("表情を解除");if(window.TestParameters.Snapshot().InputValues["ParamEyeLOpen"]!=.8)throw new Exception("UI expression clear failed");
                 await Click("表情を適用");if(Math.Abs(window.TestParameters.Snapshot().InputValues["ParamEyeLOpen"]-.4)>1e-8)throw new Exception("UI expression select failed");
+                // Stacked expressions: checking the smile layers it over the half eyes; unchecking removes only the smile.
+                var stackList=Descendants(facialPage).OfType<CheckedListBox>().Single();
+                async Task Check(int index,bool on){long sequence=window.Facial.Snapshot().AcceptedSequence;stackList.SetItemChecked(index,on);await Wait(()=>window.Facial.Snapshot().AppliedSequence>sequence);await Task.Delay(300);}
+                await Wait(()=>stackList.GetItemChecked(0));
+                double smileBase=window.TestParameters.Snapshot().InputValues["ParamMouthSmile"];
+                await Check(1,true);
+                var stacked=window.TestParameters.Snapshot().InputValues;
+                if(Math.Abs(stacked["ParamEyeLOpen"]-.4)>1e-8||Math.Abs(stacked["ParamMouthSmile"]-(smileBase+.4))>1e-8)throw new Exception("UI stacked expressions failed");
+                using(var facialState=JsonDocument.Parse(window.Facial.Snapshot().State!.Value.GetRawText()))if(string.Join(",",facialState.RootElement.GetProperty("activeExpressions").EnumerateArray().Select(p=>p.GetString()))!="half,smile")throw new Exception("Active expressions not reported");
+                await Check(1,false);
+                var unstacked=window.TestParameters.Snapshot().InputValues;
+                if(Math.Abs(unstacked["ParamEyeLOpen"]-.4)>1e-8||Math.Abs(unstacked["ParamMouthSmile"]-smileBase)>1e-8)throw new Exception("UI unstacking removed the wrong expression");
+                await Face(new{action="expression",id="smile",stack="yes"}).ContinueWith(t=>{if(!t.IsFaulted)throw new Exception("Non-boolean stack was accepted");});
                 using(var bitmap=new Bitmap(window.ClientSize.Width,window.ClientSize.Height)){window.DrawToBitmap(bitmap,new Rectangle(Point.Empty,bitmap.Size));bitmap.Save(Path.Combine(Path.GetDirectoryName(report)!,"facial-ui.png"));}
                 using(var fixtureEvaluator=new ModelEvaluator()){
                     using var meta=JsonDocument.Parse(fixtureEvaluator.Load(File.ReadAllText(model)));

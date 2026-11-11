@@ -1,5 +1,9 @@
 // Private implementation included after Graphics. Input textures contain premultiplied BGRA bytes.
 struct MeshVertex { float x,y,u,v,opacity; };
+// Multiply/screen colors on a premultiplied texel: rgb*m, then the screen pass rgb + s*a - rgb*s
+// (the straight-alpha formula times alpha). The identity colors leave the texel bit-for-bit unchanged.
+#define CONNECT_COLOR_PASS "cbuffer Colors:register(b1){float4 multiplyColor;float4 screenColor;};\n" \
+    "float4 colored(float4 c){c.rgb=c.rgb*multiplyColor.rgb;c.rgb=c.rgb+screenColor.rgb*c.a-c.rgb*screenColor.rgb;return c;}\n"
 extern "C" __declspec(dllexport) HRESULT __cdecl ConnectUpdateTexture(Graphics* g,UINT id,const BYTE* bytes,UINT length){
     if(!g||id>=g->textures.size()||!bytes)return E_INVALIDARG;
     ComPtr<ID3D11Resource> resource;g->textures[id]->GetResource(&resource);ComPtr<ID3D11Texture2D> texture;HRESULT hr=resource.As(&texture);if(FAILED(hr))return hr;
@@ -8,12 +12,12 @@ extern "C" __declspec(dllexport) HRESULT __cdecl ConnectUpdateTexture(Graphics* 
 }
 static HRESULT PrepareMesh(Graphics* g) {
     if(g->vertexShader)return S_OK;
-    const char* shader=R"(
+    const char* shader=CONNECT_COLOR_PASS R"(
 struct V {float2 p:POSITION;float2 uv:TEXCOORD0;float opacity:TEXCOORD1;};
 struct P {float4 p:SV_POSITION;float2 uv:TEXCOORD0;float opacity:TEXCOORD1;};
 P vs(V v){P p;p.p=float4(v.p,0,1);p.uv=v.uv;p.opacity=v.opacity;return p;}
 Texture2D tex:register(t0);SamplerState samp:register(s0);
-float4 ps(P p):SV_TARGET{return tex.Sample(samp,p.uv)*p.opacity;}
+float4 ps(P p):SV_TARGET{return colored(tex.Sample(samp,p.uv))*p.opacity;}
 )";
     ComPtr<ID3DBlob> vs,ps,error;
     HRESULT hr=D3DCompile(shader,strlen(shader),nullptr,nullptr,nullptr,"vs","vs_4_0",D3DCOMPILE_ENABLE_STRICTNESS,0,&vs,&error);
@@ -34,6 +38,9 @@ float4 ps(P p):SV_TARGET{return tex.Sample(samp,p.uv)*p.opacity;}
     hr=g->device->CreateBlendState(&bd,&g->blend);if(FAILED(hr))return hr;
     D3D11_RASTERIZER_DESC rd={};rd.FillMode=D3D11_FILL_SOLID;rd.CullMode=D3D11_CULL_NONE;rd.DepthClipEnable=TRUE;
     hr=g->device->CreateRasterizerState(&rd,&g->raster);if(FAILED(hr))return hr;
+    D3D11_BUFFER_DESC cd={};cd.ByteWidth=sizeof(g->colors);cd.Usage=D3D11_USAGE_DEFAULT;cd.BindFlags=D3D11_BIND_CONSTANT_BUFFER;
+    D3D11_SUBRESOURCE_DATA initial={};initial.pSysMem=g->colors;
+    hr=g->device->CreateBuffer(&cd,&initial,&g->colorBuffer);if(FAILED(hr))return hr;
     return g->device->CreateVertexShader(vs->GetBufferPointer(),vs->GetBufferSize(),nullptr,&g->vertexShader);
 }
 extern "C" __declspec(dllexport) HRESULT __cdecl ConnectUploadTexture(Graphics* g,UINT width,UINT height,const BYTE* bytes,UINT length,UINT* id) {
@@ -52,16 +59,25 @@ extern "C" __declspec(dllexport) HRESULT __cdecl ConnectBeginModel(Graphics* g) 
     g->context->OMSetRenderTargets(1,g->target.GetAddressOf(),nullptr);g->context->OMSetBlendState(g->blend.Get(),nullptr,0xffffffff);
     D3D11_TEXTURE2D_DESC d;g->frame->GetDesc(&d);D3D11_VIEWPORT vp={0,0,static_cast<float>(d.Width),static_cast<float>(d.Height),0,1};
     g->context->RSSetViewports(1,&vp);g->context->RSSetState(g->raster.Get());g->context->IASetInputLayout(g->layout.Get());g->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    g->context->VSSetShader(g->vertexShader.Get(),nullptr,0);g->context->PSSetShader(g->pixelShader.Get(),nullptr,0);g->context->PSSetSamplers(0,1,g->sampler.GetAddressOf());return S_OK;
+    g->context->VSSetShader(g->vertexShader.Get(),nullptr,0);g->context->PSSetShader(g->pixelShader.Get(),nullptr,0);g->context->PSSetSamplers(0,1,g->sampler.GetAddressOf());
+    g->context->PSSetConstantBuffers(1,1,g->colorBuffer.GetAddressOf());return S_OK;
+}
+// Multiply rgb then screen rgb, each 0..1, for the meshes drawn after this call.
+extern "C" __declspec(dllexport) HRESULT __cdecl ConnectSetColors(Graphics* g,const float* colors){
+    if(!g||!g->colorBuffer||!colors)return E_INVALIDARG;
+    for(int i=0;i<6;i++)if(!std::isfinite(colors[i])||colors[i]<0||colors[i]>1)return E_INVALIDARG;
+    const float next[8]={colors[0],colors[1],colors[2],0,colors[3],colors[4],colors[5],0};
+    if(std::equal(next,next+8,g->colors))return S_OK;
+    std::copy(next,next+8,g->colors);g->context->UpdateSubresource(g->colorBuffer.Get(),0,nullptr,g->colors,0,0);return S_OK;
 }
 static HRESULT MakeSurface(Graphics* g,ComPtr<ID3D11Texture2D>& texture,ComPtr<ID3D11RenderTargetView>& target,ComPtr<ID3D11ShaderResourceView>& view);
 static HRESULT PreparePlus(Graphics* g){
     if(!g->additiveFrame){HRESULT hr=MakeSurface(g,g->additiveFrame,g->additiveTarget,g->additiveView);if(FAILED(hr))return hr;}
     if(g->plusPixel)return S_OK;
-    const char* code=R"(
+    const char* code=CONNECT_COLOR_PASS R"(
 struct P {float4 p:SV_POSITION;float2 uv:TEXCOORD0;float opacity:TEXCOORD1;};
 Texture2D tex:register(t0);SamplerState samp:register(s0);
-float4 isolate(P p):SV_TARGET{return tex.Sample(samp,p.uv);}
+float4 isolate(P p):SV_TARGET{return colored(tex.Sample(samp,p.uv));}
 float4 vs(uint id:SV_VertexID):SV_POSITION {float2 p=float2((id<<1)&2,id&2);return float4(p*float2(2,-2)+float2(-1,1),0,1);}
 cbuffer Fade:register(b0){float opacity;float3 padding;};
 float4 plus(float4 p:SV_POSITION):SV_TARGET{return round(tex.Load(int3(p.xy,0))*opacity*255.0)/255.0;}
@@ -85,33 +101,29 @@ static HRESULT UploadBuffer(Graphics* g,ComPtr<ID3D11Buffer>& buffer,UINT& capac
     memcpy(mapped.pData,data,bytes);g->context->Unmap(buffer.Get(),0);return S_OK;
 }
 extern "C" __declspec(dllexport) HRESULT __cdecl ConnectSetBlendMode(Graphics* g,int mode){if(!g||mode<0||mode>3)return E_INVALIDARG;g->blendMode=mode;return S_OK;}
-static HRESULT PrepareBlend(Graphics* g){
-    if(!g->blendFrame){D3D11_TEXTURE2D_DESC d;g->frame->GetDesc(&d);HRESULT hr=g->device->CreateTexture2D(&d,nullptr,&g->blendFrame);if(FAILED(hr))return hr;
-        hr=g->device->CreateShaderResourceView(g->blendFrame.Get(),nullptr,&g->blendView);if(FAILED(hr))return hr;}
-    auto& shader=g->blendShaders[g->blendMode-1];
-    if(!shader){
-        const char* code=R"(
+// Multiply and screen are separable blends of premultiplied colors, so the output merger computes them
+// in primitive order (self-overlapping meshes included) without reading the destination in a shader:
+//   multiply: s(1 - da) + d(s + 1 - sa)   (dual-source: the shader's second output is s + 1 - sa)
+//   screen:   s + d(1 - s)
+// Alpha is s.a + d.a(1 - s.a) for both, as for normal blending.
+static HRESULT PrepareHardwareBlend(Graphics* g){
+    if(g->multiplyPixel)return S_OK;
+    const char* code=CONNECT_COLOR_PASS R"(
 struct P {float4 p:SV_POSITION;float2 uv:TEXCOORD0;float opacity:TEXCOORD1;};
-Texture2D tex:register(t0);Texture2D destination:register(t1);SamplerState samp:register(s0);
-float4 ps(P p):SV_TARGET{
- float4 s=tex.Sample(samp,p.uv)*p.opacity,d=destination.Load(int3(p.p.xy,0));
- float3 cs=s.a>0?s.rgb/s.a:0,cd=d.a>0?d.rgb/d.a:0;
-#if MODE == 1
- float3 b=cs*cd;
-#elif MODE == 2
- float3 b=1-(1-cs)*(1-cd);
-#else
- float3 b=min(1,cs+cd);
-#endif
- return float4(s.rgb*(1-d.a)+b*s.a*d.a+d.rgb*(1-s.a),s.a+d.a*(1-s.a));
-})";
-        const char* mode=g->blendMode==1?"1":g->blendMode==2?"2":"3";D3D_SHADER_MACRO macros[]={{"MODE",mode},{nullptr,nullptr}};ComPtr<ID3DBlob> compiled,error;
-        HRESULT hr=D3DCompile(code,strlen(code),nullptr,macros,nullptr,"ps","ps_4_0",D3DCOMPILE_ENABLE_STRICTNESS,0,&compiled,&error);if(FAILED(hr))return hr;
-        hr=g->device->CreatePixelShader(compiled->GetBufferPointer(),compiled->GetBufferSize(),nullptr,&shader);if(FAILED(hr))return hr;
-    }
-    ID3D11ShaderResourceView* empty=nullptr;g->context->PSSetShaderResources(1,1,&empty);
-    auto source=g->groupStage==1?g->contentFrame.Get():g->groupStage==2?g->maskFrame.Get():g->frame.Get();g->context->CopyResource(g->blendFrame.Get(),source);
-    g->context->PSSetShaderResources(1,1,g->blendView.GetAddressOf());g->context->PSSetShader(shader.Get(),nullptr,0);g->context->OMSetBlendState(nullptr,nullptr,0xffffffff);return S_OK;
+Texture2D tex:register(t0);SamplerState samp:register(s0);
+struct O {float4 color:SV_Target0;float4 factor:SV_Target1;};
+O ps(P p){float4 s=colored(tex.Sample(samp,p.uv))*p.opacity;O o;o.color=s;o.factor=float4(s.rgb+(1-s.a),1);return o;}
+)";
+    ComPtr<ID3DBlob> compiled,error;
+    HRESULT hr=D3DCompile(code,strlen(code),nullptr,nullptr,nullptr,"ps","ps_4_0",D3DCOMPILE_ENABLE_STRICTNESS,0,&compiled,&error);if(FAILED(hr))return hr;
+    D3D11_BLEND_DESC bd={};auto& rt=bd.RenderTarget[0];rt.BlendEnable=TRUE;rt.BlendOp=rt.BlendOpAlpha=D3D11_BLEND_OP_ADD;rt.RenderTargetWriteMask=D3D11_COLOR_WRITE_ENABLE_ALL;
+    rt.SrcBlendAlpha=D3D11_BLEND_ONE;rt.DestBlendAlpha=D3D11_BLEND_INV_SRC_ALPHA;
+    rt.SrcBlend=D3D11_BLEND_INV_DEST_ALPHA;rt.DestBlend=D3D11_BLEND_SRC1_COLOR;
+    hr=g->device->CreateBlendState(&bd,&g->multiplyBlend);if(FAILED(hr))return hr;
+    rt.SrcBlend=D3D11_BLEND_ONE;rt.DestBlend=D3D11_BLEND_INV_SRC_COLOR;
+    hr=g->device->CreateBlendState(&bd,&g->screenBlend);if(FAILED(hr))return hr;
+    // Created last: it is the initialization-complete flag.
+    return g->device->CreatePixelShader(compiled->GetBufferPointer(),compiled->GetBufferSize(),nullptr,&g->multiplyPixel);
 }
 extern "C" __declspec(dllexport) HRESULT __cdecl ConnectDrawMesh(Graphics* g,UINT texture,const MeshVertex* vertices,UINT vertexCount,const UINT* indices,UINT indexCount) {
     if(!g||!g->vertexShader||texture>=g->textures.size()||!vertices||!indices||!vertexCount||vertexCount>1000000||!indexCount||indexCount>3000000||indexCount%3)return E_INVALIDARG;
@@ -143,11 +155,14 @@ extern "C" __declspec(dllexport) HRESULT __cdecl ConnectDrawMesh(Graphics* g,UIN
         g->context->PSSetShader(g->pixelShader.Get(),nullptr,0);g->context->OMSetBlendState(g->blend.Get(),nullptr,0xffffffff);
         return g->device->GetDeviceRemovedReason();
     }
-    // Each triangle must observe earlier fragments, including self-overlapping meshes.
-    // This correctness path is deliberately conservative; optimize destination copies after parity QA.
-    if(g->blendMode){for(UINT i=0;i<indexCount;i+=3){hr=PrepareBlend(g);if(FAILED(hr))return hr;g->context->DrawIndexed(3,i,0);}}
+    if(g->blendMode==1||g->blendMode==2){
+        hr=PrepareHardwareBlend(g);if(FAILED(hr))return hr;
+        if(g->blendMode==1){g->context->PSSetShader(g->multiplyPixel.Get(),nullptr,0);g->context->OMSetBlendState(g->multiplyBlend.Get(),nullptr,0xffffffff);}
+        else g->context->OMSetBlendState(g->screenBlend.Get(),nullptr,0xffffffff);
+        g->context->DrawIndexed(indexCount,0,0);
+        g->context->PSSetShader(g->pixelShader.Get(),nullptr,0);g->context->OMSetBlendState(g->blend.Get(),nullptr,0xffffffff);
+    }
     else g->context->DrawIndexed(indexCount,0,0);
-    if(g->blendMode){ID3D11ShaderResourceView* empty=nullptr;g->context->PSSetShaderResources(1,1,&empty);g->context->PSSetShader(g->pixelShader.Get(),nullptr,0);g->context->OMSetBlendState(g->blend.Get(),nullptr,0xffffffff);}
     return g->device->GetDeviceRemovedReason();
 }
 extern "C" __declspec(dllexport) HRESULT __cdecl ConnectEndModel(Graphics* g,BOOL present) {
@@ -172,11 +187,15 @@ extern "C" __declspec(dllexport) HRESULT __cdecl ConnectBeginClip(Graphics* g){
 float4 vs(uint id:SV_VertexID):SV_POSITION {float2 p=float2((id<<1)&2,id&2);return float4(p*float2(2,-2)+float2(-1,1),0,1);}
 Texture2D content:register(t0);Texture2D mask:register(t1);
 float4 ps(float4 pos:SV_POSITION):SV_TARGET {int3 p=int3(pos.xy,0);return content.Load(p)*mask.Load(p).a;}
+float4 inverted(float4 pos:SV_POSITION):SV_TARGET {int3 p=int3(pos.xy,0);return content.Load(p)*(1-mask.Load(p).a);}
 )";
-        ComPtr<ID3DBlob> vs,ps,error;
+        ComPtr<ID3DBlob> vs,ps,invert,error;
         hr=D3DCompile(code,strlen(code),nullptr,nullptr,nullptr,"vs","vs_4_0",D3DCOMPILE_ENABLE_STRICTNESS,0,&vs,&error);if(FAILED(hr))return hr;
         hr=D3DCompile(code,strlen(code),nullptr,nullptr,nullptr,"ps","ps_4_0",D3DCOMPILE_ENABLE_STRICTNESS,0,&ps,&error);if(FAILED(hr))return hr;
+        hr=D3DCompile(code,strlen(code),nullptr,nullptr,nullptr,"inverted","ps_4_0",D3DCOMPILE_ENABLE_STRICTNESS,0,&invert,&error);if(FAILED(hr))return hr;
         hr=g->device->CreateVertexShader(vs->GetBufferPointer(),vs->GetBufferSize(),nullptr,&g->compositeVertex);if(FAILED(hr))return hr;
+        hr=g->device->CreatePixelShader(invert->GetBufferPointer(),invert->GetBufferSize(),nullptr,&g->compositeInvertPixel);if(FAILED(hr))return hr;
+        // Created last: it is the initialization-complete flag.
         hr=g->device->CreatePixelShader(ps->GetBufferPointer(),ps->GetBufferSize(),nullptr,&g->compositePixel);if(FAILED(hr))return hr;
     }
     ID3D11ShaderResourceView* empty[2]={nullptr,nullptr};g->context->PSSetShaderResources(0,2,empty);
@@ -187,16 +206,20 @@ extern "C" __declspec(dllexport) HRESULT __cdecl ConnectClipMask(Graphics* g){
     if(!g||g->groupStage!=1)return E_INVALIDARG;
     g->context->OMSetRenderTargets(1,g->maskTarget.GetAddressOf(),nullptr);g->groupStage=2;return S_OK;
 }
-extern "C" __declspec(dllexport) HRESULT __cdecl ConnectEndClip(Graphics* g){
+// Composites the clipped content through the mask: content x mask alpha, or x (1 - mask alpha) for an
+// inverted clip (the content shows where the masks do not cover it).
+static HRESULT EndClip(Graphics* g,ID3D11PixelShader* composite){
     if(!g||g->groupStage!=2)return E_INVALIDARG;
     g->context->OMSetRenderTargets(1,g->target.GetAddressOf(),nullptr);
     ID3D11ShaderResourceView* views[2]={g->contentView.Get(),g->maskView.Get()};g->context->PSSetShaderResources(0,2,views);
-    g->context->IASetInputLayout(nullptr);g->context->VSSetShader(g->compositeVertex.Get(),nullptr,0);g->context->PSSetShader(g->compositePixel.Get(),nullptr,0);
+    g->context->IASetInputLayout(nullptr);g->context->VSSetShader(g->compositeVertex.Get(),nullptr,0);g->context->PSSetShader(composite,nullptr,0);
     g->context->Draw(3,0);
     ID3D11ShaderResourceView* empty[2]={nullptr,nullptr};g->context->PSSetShaderResources(0,2,empty);
     g->context->IASetInputLayout(g->layout.Get());g->context->VSSetShader(g->vertexShader.Get(),nullptr,0);g->context->PSSetShader(g->pixelShader.Get(),nullptr,0);
     g->groupStage=0;return g->device->GetDeviceRemovedReason();
 }
+extern "C" __declspec(dllexport) HRESULT __cdecl ConnectEndClip(Graphics* g){return g?EndClip(g,g->compositePixel.Get()):E_INVALIDARG;}
+extern "C" __declspec(dllexport) HRESULT __cdecl ConnectEndClipInverted(Graphics* g){return g?EndClip(g,g->compositeInvertPixel.Get()):E_INVALIDARG;}
 extern "C" __declspec(dllexport) HRESULT __cdecl ConnectReadFrame(Graphics* g,BYTE* bytes,UINT length) {
     if(!g||!bytes)return E_INVALIDARG;D3D11_TEXTURE2D_DESC d;g->frame->GetDesc(&d);if(length!=d.Width*d.Height*4)return E_INVALIDARG;
     UINT ignored;HRESULT hr=ConnectReadPixel(g,&ignored);if(FAILED(hr))return hr;

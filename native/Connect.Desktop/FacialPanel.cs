@@ -14,12 +14,18 @@ internal sealed partial class MainWindow
         var row=new FlowLayoutPanel{AutoSize=true,WrapContents=true,MaximumSize=new Size(520,0)};row.Controls.AddRange(new Control[]{choices,apply,clearExpression});area.Controls.Add(row);
         var strength=new TrackBar{Minimum=0,Maximum=100,Value=100,TickFrequency=25,Width=300};
         var strengthLabel=new Label{Text="表情の強度: 100%",AutoSize=true,Margin=new Padding(3,14,3,0)};var strengthRow=new FlowLayoutPanel{AutoSize=true,WrapContents=false};strengthRow.Controls.AddRange(new Control[]{strengthLabel,strength});area.Controls.Add(strengthRow);
+        // Stacked expressions: each check turns one expression on over the others, unchecking turns only it off
+        // (toggle-style expressions). The checks follow the model's state when no command is pending.
+        area.Controls.Add(new Label{Text="重ねて使う表情（チェックで追加、外すとその表情だけ解除）",AutoSize=true});
+        var stackList=new CheckedListBox{CheckOnClick=true,Width=280,Height=130,IntegralHeight=false};area.Controls.Add(stackList);
+        bool syncingStack=false;
         void Send(object command){try{var session=Facial.Snapshot().ModelSession??throw new InvalidOperationException("先にモデル描画を開始してください");Facial.Submit(session,JsonSerializer.Serialize(command));}catch(Exception e){MessageBox.Show(this,e.Message,"表情・母音");}}
         void Select(){if(choices.SelectedItem is ExpressionChoice choice)Send(new{action="expression",id=choice.Id,strength=strength.Value/100d});}
         apply.Click+=(_,_)=>Select();
         // The slider previews the selected expression; selecting the list alone sends nothing.
         strength.ValueChanged+=(_,_)=>{strengthLabel.Text=$"表情の強度: {strength.Value}%";if(strength.Enabled)Select();};
         clearExpression.Click+=(_,_)=>Send(new{action="clear",layer="expression"});
+        stackList.ItemCheck+=(_,e)=>{if(syncingStack||stackList.Items[e.Index] is not ExpressionChoice choice)return;Send(new{action="expression",id=choice.Id,stack=true,strength=e.NewValue==CheckState.Checked?strength.Value/100d:0d});};
         area.Controls.Add(new Label{Text="母音・口形を確認",AutoSize=true});
         var vowels=new FlowLayoutPanel{AutoSize=true,WrapContents=true,MaximumSize=new Size(520,0)};
         var vowelButtons=new Dictionary<string,Button>();
@@ -34,18 +40,25 @@ internal sealed partial class MainWindow
         refresh.Tick+=(_,_)=>{
             var snapshot=Facial.Snapshot();bool active=snapshot.ModelSession!=null&&Engine.Status.Running;
             if(snapshot.ModelSession!=shownSession){
-                shownSession=snapshot.ModelSession;choices.Items.Clear();strength.Enabled=false;strength.Value=100;
+                shownSession=snapshot.ModelSession;choices.Items.Clear();syncingStack=true;stackList.Items.Clear();syncingStack=false;strength.Enabled=false;strength.Value=100;
                 foreach(var button in vowelButtons.Values)button.Enabled=false;
                 if(snapshot.Presets is {} catalog){
-                    foreach(var e in catalog.GetProperty("expressions").EnumerateArray())choices.Items.Add(new ExpressionChoice(e.GetProperty("id").GetString()!,e.GetProperty("name").GetString()!));
+                    foreach(var e in catalog.GetProperty("expressions").EnumerateArray()){var choice=new ExpressionChoice(e.GetProperty("id").GetString()!,e.GetProperty("name").GetString()!);choices.Items.Add(choice);stackList.Items.Add(choice);}
                     if(catalog.TryGetProperty("visemes",out var bank))foreach(var p in bank.GetProperty("presets").EnumerateArray())vowelButtons[p.GetProperty("id").GetString()!].Enabled=true;
                 }
                 if(choices.Items.Count>0)choices.SelectedIndex=0;
             }
-            row.Enabled=active;choices.Enabled=apply.Enabled=strength.Enabled=active&&choices.Items.Count>0;vowels.Enabled=clearAll.Enabled=clearExpression.Enabled=clearViseme.Enabled=active;
+            row.Enabled=active;choices.Enabled=apply.Enabled=strength.Enabled=stackList.Enabled=active&&choices.Items.Count>0;vowels.Enabled=clearAll.Enabled=clearExpression.Enabled=clearViseme.Enabled=active;
             string text="モデル描画を開始してください。";
             if(active){
-                var expression=snapshot.State is {} state?state.GetProperty("expressionId").GetString():null;
+                var activeIds=snapshot.State is {} current&&current.TryGetProperty("activeExpressions",out var list)?list.EnumerateArray().Select(p=>p.GetString()!).ToList():new List<string>();
+                if(snapshot.AppliedSequence==snapshot.AcceptedSequence){
+                    syncingStack=true;
+                    for(int i=0;i<stackList.Items.Count;i++){bool on=stackList.Items[i] is ExpressionChoice c&&activeIds.Contains(c.Id);if(stackList.GetItemChecked(i)!=on)stackList.SetItemChecked(i,on);}
+                    syncingStack=false;
+                }
+                var names=activeIds.Select(id=>choices.Items.OfType<ExpressionChoice>().FirstOrDefault(c=>c.Id==id)?.Name??id).ToList();
+                var expression=names.Count>0?string.Join("、",names):snapshot.State is {} state?state.GetProperty("expressionId").GetString():null;
                 var weights=snapshot.State is {} s?s.GetProperty("visemeWeights").EnumerateObject().Where(p=>p.Value.GetDouble()>0).Select(p=>$"{p.Name}: {p.Value.GetDouble():F2}"):Array.Empty<string>();
                 text=$"表情: {expression??"なし"} / 母音: {string.Join(", ",weights)}\n{(choices.Items.Count==0?"表情未登録。":"")}";
                 if(snapshot.Error!=null)text+="\n"+snapshot.Error;

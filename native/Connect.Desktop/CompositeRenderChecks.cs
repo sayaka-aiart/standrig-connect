@@ -15,7 +15,9 @@ internal static class CompositeRenderChecks
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectBeginClip(nint device);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectClipMask(nint device);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectEndClip(nint device);
+    [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectEndClipInverted(nint device);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern void ConnectDestroy(nint device);
+    [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectSetColors(nint device,float[] colors);
     private static void Check(int result)=>Marshal.ThrowExceptionForHR(result);
     public static void Run(string report){
         using var window=new Form{ClientSize=new Size(640,480),ShowInTaskbar=false};nint device=0;
@@ -36,10 +38,27 @@ internal static class CompositeRenderChecks
             Check(ConnectBeginModel(device));Draw(red,.5f,0);Draw(green,.5f,0);Near(Pixel(),0,128,64,192);
             Check(ConnectBeginModel(device));Draw(red,1,0);Draw(green,.5f,1);Near(Pixel(),0,0,127,255);
             Check(ConnectBeginModel(device));Draw(red,1,0);Draw(green,.5f,2);Near(Pixel(),0,127,255,255);
+            // Multiply over a half-transparent destination, and over a mesh that overlaps itself: each triangle
+            // multiplies what the earlier ones left (one pass would leave the red and blue channels at 64).
+            Check(ConnectBeginModel(device));Draw(red,.5f,0);Draw(green,.5f,1);Near(Pixel(),0,64,64,191);
+            Check(ConnectUploadTexture(device,1,1,[128,128,128,255],4,out uint gray));
+            Check(ConnectBeginModel(device));Draw(gray,1,0);Draw(green,.5f,1,duplicate:true);Near(Pixel(),32,128,32,255);
             Check(ConnectBeginModel(device));Check(ConnectBeginClip(device));Draw(red,.5f);Draw(green,.5f);Check(ConnectClipMask(device));Draw(red,.5f,0);Check(ConnectEndClip(device));Near(Pixel(),0,64,64,127);
+            // Opaque green through a quarter-opaque mask: a normal clip keeps a quarter, an inverted one three quarters.
+            Check(ConnectBeginModel(device));Check(ConnectBeginClip(device));Draw(green,1);Check(ConnectClipMask(device));Draw(red,.25f,0);Check(ConnectEndClip(device));Near(Pixel(),0,64,0,64);
+            Check(ConnectBeginModel(device));Check(ConnectBeginClip(device));Draw(green,1);Check(ConnectClipMask(device));Draw(red,.25f,0);Check(ConnectEndClipInverted(device));Near(Pixel(),0,191,0,191);
+            // Multiply/screen colors on straight RGB (200,100,50): multiply (.5,1,.25), screen (0,.5,0).
+            Check(ConnectUploadTexture(device,1,1,[50,100,200,255],4,out uint opaque));
+            Check(ConnectUploadTexture(device,1,1,[25,50,100,128],4,out uint half));
+            Check(ConnectSetColors(device,[.5f,1,.25f,0,.5f,0]));
+            Check(ConnectBeginModel(device));Draw(opaque,1,0);Near(Pixel(),12,177,100,255);
+            // Premultiplied half alpha: the same straight color at alpha 128.
+            Check(ConnectBeginModel(device));Draw(half,1,0);Near(Pixel(),6,89,50,128);
+            Check(ConnectSetColors(device,[1,1,1,0,0,0]));
+            Check(ConnectBeginModel(device));Draw(opaque,1,0);Near(Pixel(),50,100,200,255);
             Check(ConnectResize(device,1080,1080));Check(ConnectBeginModel(device));Draw(red,.5f);Draw(green,.5f);Near(Pixel(1080,1080),0,128,128,255);
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(report))!);
-            File.WriteAllText(report,JsonSerializer.Serialize(new{passed=true,actualD3D11=true,opaqueCrossfade=samples,selfOverlapIsolated=true,normalOverUnchanged=true,multiplyAndScreen=true,clipGroup=true,resize=true,cameraOpened=false},new JsonSerializerOptions{WriteIndented=true}));
+            File.WriteAllText(report,JsonSerializer.Serialize(new{passed=true,actualD3D11=true,opaqueCrossfade=samples,selfOverlapIsolated=true,normalOverUnchanged=true,multiplyAndScreen=true,clipGroup=true,blendColors=true,resize=true,cameraOpened=false},new JsonSerializerOptions{WriteIndented=true}));
         }finally{if(device!=0)ConnectDestroy(device);}
     }
 }

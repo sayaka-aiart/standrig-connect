@@ -5,6 +5,7 @@ import { createPartClipResolver, clipMaskPartIds } from '@core/mask';
 import { pathGeometry } from './path-geometry';
 import { createSharedWarpProjector } from '@core/sharedWarpProjection';
 import { hasWarpEffect,warpPoint } from '@core/warp';
+import { resolvePartBlendColors } from '@core/blendColors';
 
 // Match the public renderer's projection and stitch order. Texturing/compositing is a separate contract.
 export function finalGeometry(rig:any, frame:any, baseMatrix:any, parts:any[]) {
@@ -13,7 +14,7 @@ export function finalGeometry(rig:any, frame:any, baseMatrix:any, parts:any[]) {
  const geometries=new Map<string,any>();
  const unsupported:{partId:string;reason:string}[]=[];
  const resolveClip=createPartClipResolver(rig);
- for(const part of rig.parts){if(part.clip){const ids=clipMaskPartIds(part.clip);if(part.clip.mode!=='alpha'||!ids.length||ids.some(id=>{const p:any=sourceParts.get(id);return !p||p.kind!=='image'||!p.assetId;})||![undefined,'rendered','ignore'].includes(part.clip.maskOpacity))throw Error('invalid clip '+part.id);}}
+ for(const part of rig.parts){if(part.clip){const ids=clipMaskPartIds(part.clip);if(part.clip.mode!=='alpha'||!ids.length||ids.some(id=>{const p:any=sourceParts.get(id);return !p||p.kind!=='image'||!p.assetId;})||![undefined,'rendered','ignore'].includes(part.clip.maskOpacity)||![undefined,true,false].includes(part.clip.invert))throw Error('invalid clip '+part.id);}}
  for(const entry of parts){
   const part:any=sourceParts.get(entry.id);
   if(part.kind!=='image')continue;
@@ -31,7 +32,9 @@ export function finalGeometry(rig:any, frame:any, baseMatrix:any, parts:any[]) {
   const bounds={left,top,width:asset.width,height:asset.height},warped=hasWarpEffect(warp);
   const vertices=mesh.vertices.map((v:any)=>{const local={x:left+v.x,y:top+v.y};const p=sharedProject(warped?warpPoint(local.x,local.y,bounds,warp):local);return {x:p.x,y:p.y,id:v.id,u:v.u,v:v.v};});
   const clip=resolveClip(part);
-  geometries.set(entry.id,{entry,part,mesh,paths:pathGeometry(part,frame.values,context),clip:clip?{ownerId:clip.owner.id,maskPartIds:clip.maskPartIds,maskOpacity:clip.clip.maskOpacity??'rendered'}:null,vertices,byId:undefined});
+  // invert appears only on inverted clips, so packets of other rigs are unchanged.
+  const clipRecord=clip?{ownerId:clip.owner.id,maskPartIds:clip.maskPartIds,maskOpacity:clip.clip.maskOpacity??'rendered',...(clip.clip.invert===true?{invert:true}:{})}:null;
+  geometries.set(entry.id,{entry,part,mesh,paths:pathGeometry(part,frame.values,context),clip:clipRecord,vertices,byId:undefined});
  }
  const stitches=hasGlueStitches(rig)?resolveGlueStitchOffsets(rig,{
   values:frame.values,restScale:glueStitchRestScale(baseMatrix),
@@ -46,6 +49,8 @@ export function finalGeometry(rig:any, frame:any, baseMatrix:any, parts:any[]) {
  const meshes=[...geometries.values()].map(g=>({
   partId:g.part.id,assetId:g.part.assetId,drawOrder:g.part.drawOrder,blendMode:g.part.blendMode??'normal',
   visible:g.entry.state.visible,opacity:g.entry.state.opacity,clip:g.clip,geometrySource:g.entry.localMesh?'artmesh':'image-grid',
+  // Multiply/screen colors (0..1 RGB), applied by the native shader; null leaves the texture as is.
+  colors:resolvePartBlendColors(g.part,frame.values)??null,
   vertices:stitchedVertices(g,stitches?.offsets.get(g.part.id)),
   triangles:g.mesh.triangles,paths:g.paths
  }));

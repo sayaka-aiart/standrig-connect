@@ -43,6 +43,9 @@ internal sealed class ModelRenderPipeline : IFramePipeline
     private uint[] renderIndices=Array.Empty<uint>();
     private Vertex[] drawVertices=Array.Empty<Vertex>();
     private uint[] drawIndices=Array.Empty<uint>();
+    // Multiply rgb then screen rgb as the native renderer last received them (identity at creation).
+    private readonly float[] appliedColors={1,1,1,0,0,0};
+    private readonly float[] nextColors=new float[6];
     internal static object? Timings;
     internal static object? Resources;
     internal static long RenderedFrames;
@@ -171,7 +174,9 @@ internal sealed class ModelRenderPipeline : IFramePipeline
                 if(!byId.TryGetValue(id.GetString()!,out var mask))throw new InvalidOperationException("Missing mask geometry");
                 Draw(mask,ignore); // Public renderer draws mask sources directly, without recursively applying their clip.
             }
-            Marshal.ThrowExceptionForHR(ConnectEndClip(device));
+            // An inverted clipping mask: the content shows where the masks do not cover it.
+            bool inverted=clip.TryGetProperty("invert",out var invert)&&invert.ValueKind==JsonValueKind.True;
+            Marshal.ThrowExceptionForHR(inverted?ConnectEndClipInverted(device):ConnectEndClip(device));
         }
         bool sendEnabled=spoutEnabled?.Invoke()==true;
         int sendResult=ConnectSpoutFrame(device,sendEnabled);
@@ -210,6 +215,8 @@ internal sealed class ModelRenderPipeline : IFramePipeline
         frameEffectMs+=timer.Elapsed.TotalMilliseconds;
         int blend=ignoreVisualAlpha?0:mesh.GetProperty("blendMode").GetString() switch {"normal"=>0,"multiply"=>1,"screen"=>2,"additive"=>3,_=>throw new NotSupportedException("Unsupported visible blend mode")};
         Marshal.ThrowExceptionForHR(ConnectSetBlendMode(device,blend));
+        // Multiply/screen colors; masks use only coverage, so they draw with the identity colors.
+        SetColors(!ignoreVisualAlpha&&mesh.TryGetProperty("colors",out var colors)&&colors.ValueKind==JsonValueKind.Object?colors:null);
         // Native code copies these arrays synchronously; only the valid prefix is submitted.
         Marshal.ThrowExceptionForHR(ConnectDrawMesh(device,texture,vertices,(uint)count,indices,(uint)indexCount));
         foreach(var path in mesh.GetProperty("paths").EnumerateArray()){
@@ -218,6 +225,16 @@ internal sealed class ModelRenderPipeline : IFramePipeline
             var stamps=path.GetProperty("centers").EnumerateArray().Select(p=>new PathStamp{X=p.GetProperty("x").GetSingle()/(view.Width/2f)-1,Y=1-p.GetProperty("y").GetSingle()/(view.Height/2f),RadiusX=radius/(view.Width/2f),RadiusY=radius/(view.Height/2f),R=color[0],G=color[1],B=color[2],A=color[3]}).ToArray();
             if(stamps.Length>0)Marshal.ThrowExceptionForHR(ConnectDrawPath(device,stamps,(uint)stamps.Length));
         }
+    }
+    private void SetColors(JsonElement? colors)
+    {
+        if(colors is {} c){
+            var multiply=c.GetProperty("multiply");var screen=c.GetProperty("screen");
+            for(int i=0;i<3;i++){nextColors[i]=multiply[i].GetSingle();nextColors[i+3]=screen[i].GetSingle();}
+        }else{nextColors[0]=nextColors[1]=nextColors[2]=1;nextColors[3]=nextColors[4]=nextColors[5]=0;}
+        if(nextColors.AsSpan().SequenceEqual(appliedColors))return;
+        Marshal.ThrowExceptionForHR(ConnectSetColors(device,nextColors));
+        nextColors.CopyTo(appliedColors,0);
     }
     private static byte[] ReadBitmap(Bitmap bitmap)
     {
@@ -233,10 +250,12 @@ internal sealed class ModelRenderPipeline : IFramePipeline
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectSpoutFrame(nint device,bool enabled);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectBeginModel(nint device);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectSetBlendMode(nint device,int mode);
+    [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectSetColors(nint device,float[] colors);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectDrawPath(nint device,PathStamp[] stamps,uint count);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectBeginClip(nint device);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectClipMask(nint device);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectEndClip(nint device);
+    [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectEndClipInverted(nint device);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectDrawMesh(nint device,uint texture,Vertex[] vertices,uint vertexCount,uint[] indices,uint indexCount);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectEndModel(nint device,[MarshalAs(UnmanagedType.Bool)]bool present);
     [DllImport("Connect.Graphics",CallingConvention=CallingConvention.Cdecl)] private static extern int ConnectReadFrame(nint device,byte[] bytes,uint length);

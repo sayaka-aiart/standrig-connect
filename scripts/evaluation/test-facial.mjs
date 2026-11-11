@@ -22,6 +22,12 @@ const frame=(time,values={},overrides={})=>{
 command({action:'expression',id:'half'},0);
 for(let i=0;i<=60;i++)frame(i/60,{ParamEyeLOpen:i%7===0?0:.8,ParamAngleX:30*Math.sin(i)});
 command({action:'expression',id:'smile'},1);
+// Stacked expressions (toggles): half joins smile, then leaves again.
+command({action:'expression',id:'half',stack:true},1);
+assert.deepEqual(JSON.parse(api.facialState(1)).activeExpressions,['smile','half']);
+for(let i=0;i<=9;i++)frame(1+i/600,{ParamEyeLOpen:.8});
+command({action:'expression',id:'half',strength:0,stack:true},1);
+assert.deepEqual(JSON.parse(api.facialState(1)).activeExpressions,['smile']);
 command({action:'visemes',weights:{A:1,I:1}},1);
 for(let i=61;i<=120;i++)frame(i/60,{ParamMouthOpen:.2,ParamEyeLOpen:.6});
 assert.equal(frame(2).ParamMouthOpen,.65);

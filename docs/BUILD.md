@@ -62,6 +62,8 @@ node --experimental-strip-types scripts/evaluation/test-finite-packet.mjs
 node scripts/evaluation/test-final-geometry.mjs
 node scripts/evaluation/test-render-selection.mjs
 node scripts/evaluation/test-live-physics.mjs
+# Draw order, blend colors, pendulum redirects and inverted clips through the generated evaluator:
+node scripts/evaluation/test-rig-features.mjs
 dotnet run --project native/Connect.Evaluation.Tests -c Release -- --model-documents
 # Use the public StandRig sample, or explicitly supply your own exported model:
 node scripts/evaluation/make-render-fixture.mjs workspace/standrig-source/examples/sample.standrig.json
@@ -70,7 +72,7 @@ dotnet run --project native/Connect.Evaluation.Tests -c Release -- reports/evalu
 dotnet run --project native/Connect.Evaluation.Tests -c Release -- --model-slots
 dotnet native/Connect.Desktop/bin/Release/net8.0-windows/Connect.Desktop.dll --composite-render-test reports/composite.json
 # Optional: your own model, motion (at most 60 seconds), and a NEW output folder.
-dotnet native/Connect.Desktop/bin/Release/net8.0-windows/Connect.Desktop.dll --model-motion-render-test path/to/model.srig path/to/motion.json reports/model-motion
+dotnet native/Connect.Desktop/bin/Release/net8.0-windows/Connect.Desktop.dll --model-motion-render-test path/to/model.srig path/to/motion.json reports/model-motion [1080x1080 or 1080x1080@2]
 dotnet run --project native/Connect.Evaluation.Tests -c Release -- --model-document-file path/to/model.srig reports/large-model-slot
 ```
 

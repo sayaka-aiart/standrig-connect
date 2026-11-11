@@ -41,15 +41,18 @@ struct Graphics {
     ComPtr<ID3D11RenderTargetView> maskTarget,contentTarget;
     ComPtr<ID3D11ShaderResourceView> maskView,contentView;
     ComPtr<ID3D11VertexShader> compositeVertex;
-    ComPtr<ID3D11PixelShader> compositePixel;
+    ComPtr<ID3D11PixelShader> compositePixel,compositeInvertPixel;
     int groupStage=0;
     int blendMode=0;
-    ComPtr<ID3D11Texture2D> blendFrame;
-    ComPtr<ID3D11ShaderResourceView> blendView;
-    ComPtr<ID3D11PixelShader> blendShaders[3];
+    // Multiply/screen through the output merger (see PrepareHardwareBlend).
+    ComPtr<ID3D11PixelShader> multiplyPixel;
+    ComPtr<ID3D11BlendState> multiplyBlend,screenBlend;
     ComPtr<ID3D11VertexShader> pathVertex;
     ComPtr<ID3D11PixelShader> pathPixel;
     ComPtr<ID3D11InputLayout> pathLayout;
+    // Multiply (rgb, pad) and screen (rgb, pad) colors for the next meshes; identity by default.
+    ComPtr<ID3D11Buffer> colorBuffer;
+    float colors[8]={1,1,1,0,0,0,0,0};
 };
 extern "C" __declspec(dllexport) HRESULT __cdecl ConnectCreate(HWND window, UINT width, UINT height, Graphics** result) {
     if(!result || !window || width==0 || height==0 || width>4096 || height>4096)return E_INVALIDARG;
@@ -98,9 +101,9 @@ extern "C" __declspec(dllexport) HRESULT __cdecl ConnectResize(Graphics* g,UINT 
     hr=g->swap->ResizeBuffers(2,width,height,DXGI_FORMAT_B8G8R8A8_UNORM,0);
     if(FAILED(hr))return hr;
     g->frame=frame;g->target=target;g->staging.Reset();
-    g->compositePixel.Reset();g->compositeVertex.Reset();
+    g->compositePixel.Reset();g->compositeInvertPixel.Reset();g->compositeVertex.Reset();
     g->maskView.Reset();g->contentView.Reset();g->maskTarget.Reset();g->contentTarget.Reset();
-    g->maskFrame.Reset();g->contentFrame.Reset();g->blendView.Reset();g->blendFrame.Reset();g->groupStage=0;
+    g->maskFrame.Reset();g->contentFrame.Reset();g->groupStage=0;
     g->additiveFrame.Reset();g->additiveTarget.Reset();g->additiveView.Reset();
     return S_OK;
 }

@@ -666,5 +666,13 @@
   {
     "source": "scripts/evaluation/test-live-physics.mjs",
     "target": "scripts/evaluation/test-live-physics.mjs"
+  },
+  {
+    "source": "scripts/evaluation/tracking-redirects.ts",
+    "target": "scripts/evaluation/tracking-redirects.ts"
+  },
+  {
+    "source": "scripts/evaluation/test-rig-features.mjs",
+    "target": "scripts/evaluation/test-rig-features.mjs"
   }
 ]

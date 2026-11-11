@@ -35,7 +35,8 @@ internal static class Program
         }
         ApplicationConfiguration.Initialize();
         if(args.Length==2&&args[0]=="--composite-render-test"){RunCheck(()=>CompositeRenderChecks.Run(args[1]),args[1]);return;}
-        if(args.Length==4&&args[0]=="--model-motion-render-test"){RunCheck(()=>ModelMotionChecks.Run(args[1],args[2],args[3]),Path.Combine(args[3],"result.json"));return;}
+        // Optional fifth argument: the surface size as WIDTHxHEIGHT (default 640x480), e.g. 1080x1080 for OBS.
+        if((args.Length==4||args.Length==5)&&args[0]=="--model-motion-render-test"){RunCheck(()=>ModelMotionChecks.Run(args[1],args[2],args[3],args.Length==5?args[4]:null),Path.Combine(args[3],"result.json"));return;}
         if(args.Length==2&&(args[0]=="--camera-capture-test"||args[0]=="--face-capture-test")){
             try{
                 var devices=Task.Run(CameraDevices.Enumerate).GetAwaiter().GetResult();

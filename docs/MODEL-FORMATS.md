@@ -26,6 +26,17 @@ evaluator. Existing key-count, interpolation and range validation still applies.
 Connect evaluates its own model and motion: service HTTP compression, ETags and
 SSE delta frames do not require a network protocol change here.
 
+Rig features of the pinned StandRig core play as in StandRig: keyed draw order
+and draw order groups, multiply/screen colors (applied by the native shader;
+masks draw with neutral colors), inverted clips, and pendulum physics. Where a
+rig's pendulum overwrites a standard parameter that Connect's tracking, idle
+sway, demo pose, motions or parameter API write, or names the mouth
+`ParamMouthOpenY` only, the evaluator adds the change to the parameter the rig
+listens to, as StandRig's default tracking does; a tracking setup saved in the
+rig decides where the head and body angles go. Multiply and screen blending run
+in the GPU output merger rather than copying the frame per triangle; compared
+with older builds, images can differ by up to 2/255 on a small share of pixels.
+
 The core evaluator remains pinned by `scripts/evaluation/source.json`; the wire
 adapter is maintained separately and hashed in evaluator provenance. Regenerate
 the embedded evaluator with `npm run build:evaluator`.

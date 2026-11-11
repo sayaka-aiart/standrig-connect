@@ -6,6 +6,8 @@ import { parameterDefinitionsForRig, defaultParameterValues } from '@core/parame
 // Added by the pinned-source build adapter; valid only for this immutable session.
 import { prepareNativeArtMeshResolver } from '@core/artMesh';
 import { applySkinningToVertices } from '@core/skinning';
+import { hasDrawOrderGroups, sortPartsByDrawOrder, sortPartsForPaint } from '@core/drawOrder';
+import { trackingRedirects, applyTrackingRedirects, type TrackingRedirect } from './tracking-redirects';
 import { finalGeometry } from './final-geometry';
 import { renderSelection } from './render-selection';
 import { validateFinitePacket } from './finite-packet';
@@ -35,6 +37,9 @@ export { effectBuffer,registerEffect,renderEffect,clearEffects } from './image-e
 let rig:any, definitions:Map<string,any>, physics=new Map(), lastTime:number|undefined,lastPacket:any,lastInputValues:any;
 let samples=0,coreMs=0,geometryMs=0,samplingMs=0,projectionMs=0,validationMs=0;
 let meshCache=new Map<string,any>();
+let redirects:TrackingRedirect[]=[];
+// Per-model constants the render loop would otherwise rebuild every frame.
+let defaultValues:Record<string,number>={},assetsById=new Map<string,any>();
 export function profile(){return JSON.stringify({samples,coreMs:coreMs/Math.max(1,samples-10),geometryMs:geometryMs/Math.max(1,samples-10),samplingMs:samplingMs/Math.max(1,samples-10),projectionMs:projectionMs/Math.max(1,samples-10),validationMs:validationMs/Math.max(1,samples-10),clock:'Date.now milliseconds; approximate'});}
 export function load(json:string){
  const next=prepareRigBindingOrder(migrateRigDocument(unpackModel(JSON.parse(json))));
@@ -43,10 +48,12 @@ export function load(json:string){
  if(!Number.isFinite(next.stage.width)||!Number.isFinite(next.stage.height)||next.stage.width<=0||next.stage.height<=0)throw Error('invalid stage');
  const ids=new Set();for(const part of next.parts){if(ids.has(part.id))throw Error('duplicate part');ids.add(part.id);}
  const nextFacial=new FacialController(next);
+ const nextRedirects=trackingRedirects(next);
  // Complete parse/validation before replacing the current evaluation session.
- rig=next;facial=nextFacial;motion=undefined;definitions=new Map(defs.map(d=>[d.id,d]));physics=new Map();lastTime=undefined;lastPacket=undefined;meshCache.clear();samples=coreMs=geometryMs=samplingMs=projectionMs=validationMs=0;
+ const nextDefaults=defaultParameterValues(next),nextAssets=new Map<string,any>(next.assets.map((a:any)=>[a.id,a]));
+ rig=next;facial=nextFacial;redirects=nextRedirects;defaultValues=nextDefaults;assetsById=nextAssets;motion=undefined;definitions=new Map(defs.map(d=>[d.id,d]));physics=new Map();lastTime=undefined;lastPacket=undefined;meshCache.clear();samples=coreMs=geometryMs=samplingMs=projectionMs=validationMs=0;
  initializeTracking(defs);
- return JSON.stringify({contract:1,name:rig.name,parts:rig.parts.length,parameters:defs,stage:rig.stage,rendererReady:false});
+ return JSON.stringify({contract:1,name:rig.name,parts:rig.parts.length,parameters:defs,stage:rig.stage,rendererReady:false,trackingRedirects:redirects.map(r=>({from:r.from,to:r.to,factor:r.factor,viaPendulum:r.viaPendulum}))});
 }
 export function reset(){physics.clear();lastTime=undefined;lastPacket=undefined;facial?.reset();}
 export function evaluate(json:string){return advance(json,true);}
@@ -79,7 +86,7 @@ function advance(json:string,details:boolean,renderMode=false){
  const time=input.time;
  if(!Number.isFinite(time)||time<0||time>1e9)throw Error('invalid time');
  if(lastTime!==undefined&&time<lastTime)throw Error('time must be monotonic; reset before seeking');
- const values={...defaultParameterValues(rig)};
+ const values={...defaultValues};
  for(const [id,value] of Object.entries(input.values??{})){const d=definitions.get(id);if(!d||typeof value!=='number'||!Number.isFinite(value)||value<d.min||value>d.max)throw Error('invalid parameter '+id);values[id]=value;}
  if(input.overrides!==undefined&&(!input.overrides||Array.isArray(input.overrides)||typeof input.overrides!=='object'))throw Error('invalid overrides');
  for(const [id,value] of Object.entries(input.overrides??{})){const d=definitions.get(id);if(!d||typeof value!=='number'||!Number.isFinite(value)||value<d.min||value>d.max)throw Error('invalid override '+id);}
@@ -88,12 +95,17 @@ function advance(json:string,details:boolean,renderMode=false){
  const nextPhysics=new Map([...physics].map(([key,value])=>[key,{...value}]));
  const t0=Date.now();
  const composed={...facial!.evaluate(values,time*1000),...input.overrides};
+ // Standard parameters a rig does not read directly reach the parameters it listens to.
+ applyTrackingRedirects(composed,redirects,input.physics!==false);
  const step=input.physics===false?{dt:1/60,time}:prepareLivePhysicsStep(rig,composed,lastInputValues,nextPhysics,lastTime===undefined?1/60:time-lastTime,time);
  const frame=resolveRigFrame(rig,composed,matrix,{physics:input.physics!==false,physicsState:nextPhysics,physicsTime:step.time,physicsDt:step.dt});
  const t1=Date.now();
- const assets=new Map(rig.assets.map((a:any)=>[a.id,a]));
+ const assets=assetsById;
  const required=renderMode?renderSelection(rig,frame.parts):undefined;
- const parts=[...rig.parts].filter(part=>!required||required.has(part.id)).sort((a,b)=>a.drawOrder-b.drawOrder).map(part=>{
+ const selected=rig.parts.filter((part:any)=>!required||required.has(part.id));
+ // Keyed draw orders and draw order groups; plain rigs keep the stable drawOrder sort.
+ const ordered=hasDrawOrderGroups(rig.parts)?[...sortPartsForPaint(rig.parts,selected.filter((part:any)=>part.kind==='image'),frame.values),...selected.filter((part:any)=>part.kind!=='image')]:sortPartsByDrawOrder(selected,frame.values);
+ const parts=ordered.map((part:any)=>{
    const state=frame.parts.get(part.id);const asset:any=assets.get(part.assetId);
    const mesh=asset?.width>0&&asset?.height>0?cachedMesh(part,asset,frame.values):undefined;
    const localMesh=mesh&&part.artMesh?.skinning?{...mesh,vertices:applySkinningToVertices(mesh.vertices,part.artMesh.skinning,frame.skinningTransforms)}:mesh;

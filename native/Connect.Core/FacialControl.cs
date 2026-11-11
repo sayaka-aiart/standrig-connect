@@ -40,7 +40,9 @@ public sealed class FacialControl
             var action=root.GetProperty("action").GetString();
             switch(action){
                 case "expression": case "viseme":
-                    Fields(root,"action","id","strength");
+                    // stack: layer the expression over the active ones (toggle-style expressions).
+                    if(action=="expression")Fields(root,"action","id","strength","stack");else Fields(root,"action","id","strength");
+                    if(root.TryGetProperty("stack",out var stack)&&stack.ValueKind is not (JsonValueKind.True or JsonValueKind.False))throw new ArgumentException("stack must be boolean");
                     string id=root.GetProperty("id").GetString()??throw new ArgumentException("id required");
                     if(!(action=="expression"?expressions:visemes).Contains(id))throw new ArgumentException("Unregistered facial ID: "+id);
                     if(root.TryGetProperty("strength",out var strength))Strength(strength);break;

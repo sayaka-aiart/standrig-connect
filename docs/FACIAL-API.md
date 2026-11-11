@@ -20,7 +20,7 @@ Connectは登録済みのデータを再生します。登録・編集と `.exp3
 
 ### GET `/api/v1/facial`
 
-`modelSession`、`presets`（`facialPresets`と同じ登録一覧）、`state`（`expressionId`・各レイヤーの現在の重み・`transitioning`）、`acceptedSequence`、`appliedSequence`、`pending`、`error`を返します。描画モデルがない場合はセッション・一覧・状態がnullです。状態は描画スレッドから約10Hzで公開し、指示反映時にも更新します。描画自体の更新頻度を制限するものではありません。
+`modelSession`、`presets`（`facialPresets`と同じ登録一覧）、`state`（`expressionId`・オンの表情の一覧 `activeExpressions`（オンにした順）・各レイヤーの現在の重み・`transitioning`）、`acceptedSequence`、`appliedSequence`、`pending`、`error`を返します。描画モデルがない場合はセッション・一覧・状態がnullです。状態は描画スレッドから約10Hzで公開し、指示反映時にも更新します。描画自体の更新頻度を制限するものではありません。
 
 ### POST `/api/v1/facial`
 
@@ -33,6 +33,8 @@ Connectは登録済みのデータを再生します。登録・編集と `.exp3
 | command | 動作 |
 | --- | --- |
 | `{"action":"expression","id":"smile","strength":0.5}` | 表情を選択。省略時の強度は1 |
+| `{"action":"expression","id":"glasses","stack":true}` | ほかの表情を残したまま重ねる（眼鏡・照れ・涙などの切り替え） |
+| `{"action":"expression","id":"glasses","strength":0,"stack":true}` | 重ねた表情のうち、その表情だけをフェード解除 |
 | `{"action":"viseme","id":"A","strength":1}` | 登録済み母音を選択 |
 | `{"action":"visemes","weights":{"A":0.6,"I":0.4}}` | 登録済み母音を混合 |
 | `{"action":"clear","layer":"expression"}` | 表情だけフェード解除 |
@@ -76,7 +78,7 @@ request("/api/v1/facial", {
 
 ## English
 
-Author expressions and vowel poses in StandRig, export an embedded-image `.srig`, then open it in Connect. The `表情・母音` tab selects an expression, previews its strength, selects registered A/I/U/E/O/Silence targets and clears either or both layers. Registration and exp3 interchange belong to StandRig; Connect does not create missing mouth deformations or import exp3 directly. Both pose and authored Blend Shape banks are supported through the shared StandRig controller, with no claim of exact Cubism SDK parity.
+Author expressions and vowel poses in StandRig, export an embedded-image `.srig`, then open it in Connect. The `表情・母音` tab selects an expression, previews its strength, stacks expressions with checkboxes (`"stack":true` in the API; strength 0 with `stack` removes one), selects registered A/I/U/E/O/Silence targets and clears either or both layers. Registration and exp3 interchange belong to StandRig; Connect does not create missing mouth deformations or import exp3 directly. Both pose and authored Blend Shape banks are supported through the shared StandRig controller, with no claim of exact Cubism SDK parity.
 
 Order: base → tracking → additive idle → motion → expressions → visemes → explicit numeric API overrides → physics → rendering. Evaluate from fresh input every frame. Clearing restores the current underlying input. Model switch/render stop clears the facial session; motion pause/stop does not. Facial selection persists until cleared, including while minimized/in the tray. Slots preserve the catalog but do not remember transient selections.
 

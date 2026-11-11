@@ -1,6 +1,6 @@
 var StandRigEvaluation = (function(exports) {
 	Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/types.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/types.ts
 	var RIG_SCHEMA_VERSION = "0.1.0";
 	var PARAMETER_IDS = [
 		"ParamAngleX",
@@ -39,7 +39,12 @@ var StandRigEvaluation = (function(exports) {
 		"curve"
 	];
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/packedRig.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/packedRig.ts
+	var defaultFields = [
+		"vertexId",
+		"x",
+		"y"
+	];
 	function orderFor(mesh) {
 		let a = 2166136261, b = 3339675911;
 		for (const vertex of mesh.vertices) {
@@ -105,20 +110,23 @@ var StandRigEvaluation = (function(exports) {
 			if (expanded > 8e6) throw Error("Packed model expansion limit exceeded");
 			const bytes = decode$1(block.data, indices.length * 2 * width), view = new DataView(bytes.buffer);
 			const read = (i) => block.encoding === "i16" ? view.getInt16(i * width, true) / 32 : block.encoding === "f32" ? view.getFloat32(i * width, true) : view.getFloat64(i * width, true);
+			const fields = block.fields;
+			if (fields !== void 0 && (!Array.isArray(fields) || fields.length !== 3 || !defaultFields.every((name) => fields.includes(name)))) throw Error("Invalid packed offset fields");
 			const offsets = indices.map((index, i) => {
 				const x = read(i * 2), y = read(i * 2 + 1);
 				if (!Number.isFinite(x) || !Number.isFinite(y)) throw Error("Non-finite packed offsets");
-				return {
+				const offset = {
 					vertexId: mesh.vertices[index].id,
 					x,
 					y
 				};
+				return fields ? Object.fromEntries(fields.map((name) => [name, offset[name]])) : offset;
 			});
 			return Object.fromEntries(Object.entries(key).map(([name, value]) => name === "packedOffsets" ? ["offsets", offsets] : [name, value]));
 		});
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/migration.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/migration.ts
 	var CURRENT_RIG_SCHEMA_VERSION = RIG_SCHEMA_VERSION;
 	var RigMigrationError = class extends Error {
 		code;
@@ -246,13 +254,13 @@ var StandRigEvaluation = (function(exports) {
 		};
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/evaluationCache.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/evaluationCache.ts
 	var active;
 	function evaluationCache() {
 		return active;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/bindingPreparation.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/bindingPreparation.ts
 	function prepareRigBindingOrder(rig) {
 		for (const part of rig.parts) {
 			sortBindings(part.bindings);
@@ -275,8 +283,14 @@ var StandRigEvaluation = (function(exports) {
 		for (const binding of bindings ?? []) sortMultiKeyforms(binding);
 	}
 	function sortMultiKeyforms(binding) {
-		const [x, y] = binding.parameters;
-		binding.keyforms.sort((a, b) => (a.inputs[x] ?? 0) - (b.inputs[x] ?? 0) || (a.inputs[y] ?? 0) - (b.inputs[y] ?? 0));
+		const parameters = binding.parameters;
+		binding.keyforms.sort((a, b) => {
+			for (const parameter of parameters) {
+				const delta = (a.inputs[parameter] ?? 0) - (b.inputs[parameter] ?? 0);
+				if (delta) return delta;
+			}
+			return 0;
+		});
 	}
 	function sortArtMeshMultiBindings(bindings) {
 		for (const binding of bindings ?? []) binding.keyforms.sort((a, b) => {
@@ -290,10 +304,7 @@ var StandRigEvaluation = (function(exports) {
 	function sortWarpPins(pins) {
 		for (const pin of pins ?? []) {
 			for (const binding of pin.bindings ?? []) binding.keys.sort((a, b) => a.input - b.input);
-			for (const binding of pin.multiBindings ?? []) {
-				const [x, y] = binding.parameters;
-				binding.keyforms.sort((a, b) => (a.inputs[x] ?? 0) - (b.inputs[x] ?? 0) || (a.inputs[y] ?? 0) - (b.inputs[y] ?? 0));
-			}
+			for (const binding of pin.multiBindings ?? []) sortMultiKeyforms(binding);
 		}
 	}
 	function sortedKeysOrCopy(keys) {
@@ -309,7 +320,353 @@ var StandRigEvaluation = (function(exports) {
 		return axis;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/bindings.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/pendulumPhysics.ts
+	/**
+	* Pendulum physics.
+	*
+	* Each setting is a strand of particles. Its inputs, normalized from their parameter range, move the
+	* strand's root (x/y) and tilt its gravity (angle); the strand swings toward gravity; each output
+	* reads one segment's angle (or offset) and writes it to a parameter, overwriting it at weight 100
+	* or blending below. Settings run in order on shared parameter caches, so a setting reads the outputs
+	* of the settings before it. With `fps` the simulation steps at a fixed rate and frames interpolate
+	* between the last two steps.
+	*/
+	var AIR_RESISTANCE = 5;
+	var MAXIMUM_WEIGHT = 100;
+	var MOVEMENT_THRESHOLD = .001;
+	var MAXIMUM_DELTA_TIME = 5;
+	function pendulumSignature(physics) {
+		return physics.settings.map((setting) => `${setting.id}:${setting.particles.length}:${setting.outputs.length}`).join("|");
+	}
+	/** Parameters the pendulum reads or writes. */
+	function pendulumParameters(physics) {
+		const parameters = /* @__PURE__ */ new Set();
+		for (const setting of physics.settings) {
+			if (setting.enabled === false) continue;
+			for (const input of setting.inputs) parameters.add(input.parameter);
+			for (const output of setting.outputs) parameters.add(output.parameter);
+		}
+		return parameters;
+	}
+	/** Enabled settings that overwrite `parameter` every frame (a valid output at full weight), in order. */
+	function pendulumSettingsOverwriting(physics, parameter) {
+		return physics.settings.filter((setting) => setting.enabled !== false && setting.outputs.some((output) => output.parameter === parameter && output.weight >= MAXIMUM_WEIGHT && validOutput(setting, output)));
+	}
+	/**
+	* How strongly one setting's settled output follows one of its inputs near the input's default: output
+	* change per unit of input, measured at rest with everything else at its default. Negative where the
+	* output mirrors the input; 0 where it does not settle anywhere else (a pure translation input).
+	*/
+	function pendulumSettledGain(physics, parameters, setting, input, output) {
+		const range = parameters.get(input);
+		if (!range) return 0;
+		const low = Math.min(range.min, range.max), high = Math.max(range.min, range.max);
+		const step = (high - low) * .05;
+		const from = Math.max(low, range.default - step), to = Math.min(high, range.default + step);
+		if (!(to > from)) return 0;
+		const single = {
+			...physics,
+			settings: [setting]
+		};
+		const at = (value) => evaluatePendulumPhysics(single, parameters, { [input]: value }, 0, void 0).outputs[output] ?? 0;
+		return (at(to) - at(from)) / (to - from);
+	}
+	/**
+	* Advances the pendulum by `dt` seconds from the incoming (pre-physics) values and returns the final
+	* values of the parameters it outputs to. A missing or stale `state` is (re)initialized at rest for
+	* these values first, so a fresh evaluation shows the settled pose. The given state is not modified:
+	* the advanced state is a new object, so a caller can keep the previous one to roll back.
+	*/
+	function evaluatePendulumPhysics(physics, parameters, values, dt, state) {
+		const signature = pendulumSignature(physics);
+		const current = state && state.signature === signature ? clonePendulumState(state) : stabilize(physics, parameters, values, signature);
+		const fixedDt = physics.fps && physics.fps > 0 ? 1 / physics.fps : dt;
+		const valueOf = (parameter) => values[parameter] ?? parameters.get(parameter)?.default ?? 0;
+		if (dt > 0 && fixedDt > 0) {
+			current.remainTime += dt;
+			if (current.remainTime > MAXIMUM_DELTA_TIME) current.remainTime = 0;
+			while (current.remainTime >= fixedDt) {
+				current.previousOutputs = current.currentOutputs.map((outputs) => [...outputs]);
+				const inputWeight = fixedDt / current.remainTime;
+				for (const [parameter, cached] of current.inputCaches) {
+					const blended = cached * (1 - inputWeight) + valueOf(parameter) * inputWeight;
+					current.caches.set(parameter, blended);
+					current.inputCaches.set(parameter, blended);
+				}
+				physics.settings.forEach((setting, index) => {
+					if (setting.enabled !== false) stepSetting(physics, setting, current.strands[index], current.currentOutputs[index], parameters, current.caches, fixedDt);
+				});
+				current.remainTime -= fixedDt;
+			}
+		}
+		const alpha = fixedDt > 0 ? current.remainTime / fixedDt : 1;
+		const outputs = {};
+		physics.settings.forEach((setting, settingIndex) => {
+			if (setting.enabled === false) return;
+			setting.outputs.forEach((output, outputIndex) => {
+				const range = parameters.get(output.parameter);
+				if (!range || !validOutput(setting, output)) return;
+				const value = current.previousOutputs[settingIndex][outputIndex] * (1 - alpha) + current.currentOutputs[settingIndex][outputIndex] * alpha;
+				outputs[output.parameter] = applyOutput(outputs[output.parameter] ?? valueOf(output.parameter), range, value, output);
+			});
+		});
+		return {
+			state: current,
+			outputs
+		};
+	}
+	function clonePendulumState(state) {
+		return {
+			signature: state.signature,
+			strands: state.strands.map((strand) => strand.map((particle) => ({
+				position: { ...particle.position },
+				lastPosition: { ...particle.lastPosition },
+				lastGravity: { ...particle.lastGravity },
+				velocity: { ...particle.velocity }
+			}))),
+			currentOutputs: state.currentOutputs.map((outputs) => [...outputs]),
+			previousOutputs: state.previousOutputs.map((outputs) => [...outputs]),
+			caches: new Map(state.caches),
+			inputCaches: new Map(state.inputCaches),
+			remainTime: state.remainTime
+		};
+	}
+	/** A strand hanging at rest for these values, with the outputs that rest pose produces. */
+	function stabilize(physics, parameters, values, signature) {
+		const involved = pendulumParameters(physics);
+		const caches = /* @__PURE__ */ new Map();
+		for (const parameter of involved) caches.set(parameter, values[parameter] ?? parameters.get(parameter)?.default ?? 0);
+		const strands = [];
+		const outputs = [];
+		for (const setting of physics.settings) {
+			const strand = restStrand(setting);
+			const settingOutputs = setting.outputs.map(() => 0);
+			strands.push(strand);
+			outputs.push(settingOutputs);
+			if (setting.enabled === false || strand.length < 2) continue;
+			const { translation, angle } = settingInputs(setting, parameters, caches);
+			const gravity = gravityDirection(angle);
+			const wind = physics.wind ?? {
+				x: 0,
+				y: 0
+			};
+			const threshold = MOVEMENT_THRESHOLD * setting.normalization.position.maximum;
+			strand[0].position = translation;
+			for (let index = 1; index < strand.length; index += 1) {
+				const particle = strand[index], spec = setting.particles[index];
+				const force = normalized({
+					x: gravity.x * spec.acceleration + wind.x,
+					y: gravity.y * spec.acceleration + wind.y
+				});
+				particle.position = {
+					x: strand[index - 1].position.x + force.x * spec.radius,
+					y: strand[index - 1].position.y + force.y * spec.radius
+				};
+				if (Math.abs(particle.position.x) < threshold) particle.position.x = 0;
+				particle.lastPosition = { ...particle.position };
+				particle.velocity = {
+					x: 0,
+					y: 0
+				};
+				particle.lastGravity = gravity;
+			}
+			writeOutputs(physics, setting, strand, settingOutputs, parameters, caches);
+		}
+		return {
+			signature,
+			strands,
+			currentOutputs: outputs,
+			previousOutputs: outputs.map((entry) => [...entry]),
+			caches,
+			inputCaches: new Map(caches),
+			remainTime: 0
+		};
+	}
+	function restStrand(setting) {
+		const strand = [];
+		let y = 0;
+		setting.particles.forEach((particle, index) => {
+			if (index > 0) y += particle.radius;
+			const position = {
+				x: 0,
+				y
+			};
+			strand.push({
+				position,
+				lastPosition: { ...position },
+				lastGravity: {
+					x: 0,
+					y: 1
+				},
+				velocity: {
+					x: 0,
+					y: 0
+				}
+			});
+		});
+		return strand;
+	}
+	function stepSetting(physics, setting, strand, outputs, parameters, caches, dt) {
+		if (strand.length < 2) return;
+		const { translation, angle } = settingInputs(setting, parameters, caches);
+		const gravity = gravityDirection(angle);
+		const wind = physics.wind ?? {
+			x: 0,
+			y: 0
+		};
+		const threshold = MOVEMENT_THRESHOLD * setting.normalization.position.maximum;
+		strand[0].position = translation;
+		for (let index = 1; index < strand.length; index += 1) {
+			const particle = strand[index], previous = strand[index - 1], spec = setting.particles[index];
+			const force = {
+				x: gravity.x * spec.acceleration + wind.x,
+				y: gravity.y * spec.acceleration + wind.y
+			};
+			particle.lastPosition = { ...particle.position };
+			const delay = spec.delay * dt * 30;
+			const turn = angleBetween(particle.lastGravity, gravity) / AIR_RESISTANCE;
+			const direction = rotateSequential({
+				x: particle.position.x - previous.position.x,
+				y: particle.position.y - previous.position.y
+			}, turn);
+			let position = {
+				x: previous.position.x + direction.x,
+				y: previous.position.y + direction.y
+			};
+			position = {
+				x: position.x + particle.velocity.x * delay + force.x * delay * delay,
+				y: position.y + particle.velocity.y * delay + force.y * delay * delay
+			};
+			const segment = normalized({
+				x: position.x - previous.position.x,
+				y: position.y - previous.position.y
+			});
+			particle.position = {
+				x: previous.position.x + segment.x * spec.radius,
+				y: previous.position.y + segment.y * spec.radius
+			};
+			if (Math.abs(particle.position.x) < threshold) particle.position.x = 0;
+			if (delay !== 0) particle.velocity = {
+				x: (particle.position.x - particle.lastPosition.x) / delay * spec.mobility,
+				y: (particle.position.y - particle.lastPosition.y) / delay * spec.mobility
+			};
+			particle.lastGravity = gravity;
+		}
+		writeOutputs(physics, setting, strand, outputs, parameters, caches);
+	}
+	function writeOutputs(physics, setting, strand, outputs, parameters, caches) {
+		const reference = physics.gravity ?? {
+			x: 0,
+			y: -1
+		};
+		setting.outputs.forEach((output, index) => {
+			if (!validOutput(setting, output)) return;
+			const particle = output.vertexIndex;
+			const segment = {
+				x: strand[particle].position.x - strand[particle - 1].position.x,
+				y: strand[particle].position.y - strand[particle - 1].position.y
+			};
+			let value;
+			if (output.type === "angle") value = angleBetween(particle >= 2 ? {
+				x: strand[particle - 1].position.x - strand[particle - 2].position.x,
+				y: strand[particle - 1].position.y - strand[particle - 2].position.y
+			} : {
+				x: -reference.x,
+				y: -reference.y
+			}, segment);
+			else value = output.type === "x" ? segment.x : segment.y;
+			if (output.reflect) value = -value;
+			outputs[index] = value;
+			const range = parameters.get(output.parameter);
+			if (range) caches.set(output.parameter, applyOutput(caches.get(output.parameter) ?? range.default, range, value, output));
+		});
+	}
+	function validOutput(setting, output) {
+		return Number.isInteger(output.vertexIndex) && output.vertexIndex >= 1 && output.vertexIndex < setting.particles.length;
+	}
+	/** Scales, clamps to the parameter range and blends by weight into `current`. */
+	function applyOutput(current, range, raw, output) {
+		const scaled = raw * output.scale;
+		const clamped = Math.min(Math.max(range.min, range.max), Math.max(Math.min(range.min, range.max), scaled));
+		const weight = output.weight / MAXIMUM_WEIGHT;
+		return weight >= 1 ? clamped : current * (1 - weight) + clamped * weight;
+	}
+	function settingInputs(setting, parameters, caches) {
+		let x = 0, y = 0, angle = 0;
+		for (const input of setting.inputs) {
+			const range = parameters.get(input.parameter);
+			if (!range) continue;
+			const weight = input.weight / MAXIMUM_WEIGHT;
+			const value = caches.get(input.parameter) ?? range.default;
+			const normalization = input.type === "angle" ? setting.normalization.angle : setting.normalization.position;
+			const normalizedValue = normalizeParameter(value, range.min, range.max, normalization, input.reflect === true) * weight;
+			if (input.type === "x") x += normalizedValue;
+			else if (input.type === "y") y += normalizedValue;
+			else angle += normalizedValue;
+		}
+		return {
+			translation: rotateSequential({
+				x,
+				y
+			}, degreesToRadians(-angle)),
+			angle
+		};
+	}
+	/**
+	* Maps a parameter value onto a normalization range: the middle of the parameter's range lands on
+	* the normalization default, each half scales linearly onto its side. Unreflected inputs are negated.
+	*/
+	function normalizeParameter(value, minimum, maximum, range, reflect) {
+		const low = Math.min(minimum, maximum), high = Math.max(minimum, maximum);
+		const clamped = Math.min(high, Math.max(low, value));
+		const middle = low + (high - low) / 2;
+		const normalizedLow = Math.min(range.minimum, range.maximum), normalizedHigh = Math.max(range.minimum, range.maximum);
+		const offset = clamped - middle;
+		let result = range.default;
+		if (offset > 0 && high !== middle) result = offset * ((normalizedHigh - range.default) / (high - middle)) + range.default;
+		else if (offset < 0 && low !== middle) result = offset * ((normalizedLow - range.default) / (low - middle)) + range.default;
+		return reflect ? result : -result;
+	}
+	function gravityDirection(angleDegrees) {
+		const radians = degreesToRadians(angleDegrees);
+		return normalized({
+			x: Math.sin(radians),
+			y: Math.cos(radians)
+		});
+	}
+	/**
+	* Rotation that computes the new y from the already rotated x (not a pure rotation). Pendulum settings
+	* are tuned with this behavior, so it is kept as is.
+	*/
+	function rotateSequential(vector, radians) {
+		const x = vector.x * Math.cos(radians) - vector.y * Math.sin(radians);
+		return {
+			x,
+			y: x * Math.sin(radians) + vector.y * Math.cos(radians)
+		};
+	}
+	/** Signed angle from `from` to `to`, in (-PI, PI]. */
+	function angleBetween(from, to) {
+		let radians = Math.atan2(to.y, to.x) - Math.atan2(from.y, from.x);
+		while (radians < -Math.PI) radians += Math.PI * 2;
+		while (radians > Math.PI) radians -= Math.PI * 2;
+		return radians;
+	}
+	function normalized(vector) {
+		const length = Math.hypot(vector.x, vector.y);
+		return length > 0 ? {
+			x: vector.x / length,
+			y: vector.y / length
+		} : {
+			x: 0,
+			y: 0
+		};
+	}
+	function degreesToRadians(degrees) {
+		return degrees * Math.PI / 180;
+	}
+	//#endregion
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/bindings.ts
 	var INTERPOLATION_SET = new Set(PARAMETER_INTERPOLATIONS);
 	function isParameterInterpolation(value) {
 		return typeof value === "string" && INTERPOLATION_SET.has(value);
@@ -370,7 +727,7 @@ var StandRigEvaluation = (function(exports) {
 		return clamped;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/artMeshBlendShape.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/artMeshBlendShape.ts
 	/** Sample a neutral-to-delta ArtMesh shape without changing the neutral mesh. */
 	function sampleArtMeshBlendShape(shape, input) {
 		if (!Number.isFinite(input) || !Number.isFinite(shape.neutralInput) || !Number.isFinite(shape.targetInput) || shape.neutralInput === shape.targetInput) return /* @__PURE__ */ new Map();
@@ -387,8 +744,6 @@ var StandRigEvaluation = (function(exports) {
 		const amount = Math.min(1, Math.max(0, (input - shape.neutralInput) / (shape.targetInput - shape.neutralInput)));
 		return applyParameterInterpolation(normalizeParameterInterpolation(shape.interpolation), amount, shape.curve);
 	}
-	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/parameterGrid.ts
 	function indexGrid(parameters, keys) {
 		const axes = parameters.map(() => /* @__PURE__ */ new Set()), points = /* @__PURE__ */ new Map();
 		for (const key of keys ?? []) {
@@ -448,10 +803,10 @@ var StandRigEvaluation = (function(exports) {
 		return result;
 	}
 	function validGridParameters(parameters) {
-		return Array.isArray(parameters) && [2, 3].includes(parameters.length) && parameters.every((p) => typeof p === "string" && p.trim().length > 0) && new Set(parameters).size === parameters.length;
+		return Array.isArray(parameters) && parameters.length >= 2 && parameters.length <= 8 && parameters.every((p) => typeof p === "string" && p.trim().length > 0) && new Set(parameters).size === parameters.length;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/extendedBlendShape.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/extendedBlendShape.ts
 	var blendWeight = (shape, values) => sampleArtMeshBlendShapeWeight(shape, values[shape.parameter] ?? shape.neutralInput);
 	function applyTransformShapes(pose, shapes, values) {
 		for (const shape of shapes ?? []) {
@@ -503,43 +858,56 @@ var StandRigEvaluation = (function(exports) {
 		return Math.min(1, Math.max(0, base + (glue.blendShapes ?? []).reduce((sum, s) => sum + s.strength * blendWeight(s, values), 0)));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/multiBindings.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/multiBindings.ts
+	/**
+	* Samples a scalar keyform grid over two or more parameters (for example opacity driven by
+	* eye-open, smile and a toggle).
+	* The value is interpolated axis by axis in parameter order, so a two-parameter grid evaluates
+	* exactly like the original bilinear sampler.
+	*/
 	function sampleMultiParameterBinding(binding, values) {
-		if (!Array.isArray(binding.parameters) || binding.parameters.length !== 2) return void 0;
-		const [xParameter, yParameter] = binding.parameters;
-		if (!xParameter || !yParameter || xParameter === yParameter) return void 0;
+		const parameters = binding.parameters;
+		if (!Array.isArray(parameters) || parameters.length < 2 || parameters.length > 8) return void 0;
+		return sampleKeyformGrid(parameters, binding.keyforms, keyformValue$1, values, binding.interpolation, binding.curve);
+	}
+	function keyformValue$1(keyform) {
+		return keyform.value;
+	}
+	/**
+	* Multilinear sample of a rectangular keyform grid over one to MAX_GRID_PARAMETERS distinct parameters.
+	* Inputs outside the grid clamp to its edge; a grid with a missing enclosing corner yields
+	* undefined rather than inventing a value.
+	*/
+	function sampleKeyformGrid(parameters, keyforms, valueOf, values, interpolation, curve) {
+		if (!Array.isArray(parameters) || parameters.length < 1 || parameters.length > 8) return void 0;
+		if (!parameters.every((parameter) => typeof parameter === "string" && parameter.length > 0) || new Set(parameters).size !== parameters.length) return void 0;
 		const points = /* @__PURE__ */ new Map();
-		const xs = /* @__PURE__ */ new Set();
-		const ys = /* @__PURE__ */ new Set();
-		for (const keyform of binding.keyforms ?? []) {
-			const x = keyform?.inputs?.[xParameter];
-			const y = keyform?.inputs?.[yParameter];
-			if (!finite$4(x) || !finite$4(y) || !finite$4(keyform.value)) continue;
-			xs.add(x);
-			ys.add(y);
-			points.set(pointKey(x, y), keyform.value);
+		const axisValues = parameters.map(() => /* @__PURE__ */ new Set());
+		for (const keyform of keyforms ?? []) {
+			const coordinates = parameters.map((parameter) => keyform?.inputs?.[parameter]);
+			const value = keyform ? valueOf(keyform) : void 0;
+			if (!coordinates.every(finite$4) || !finite$4(value)) continue;
+			coordinates.forEach((coordinate, axis) => axisValues[axis].add(coordinate));
+			points.set(pointKey(coordinates), value);
 		}
-		if (xs.size < 2 || ys.size < 2) return void 0;
-		const xAxis = orderedAxis(xs);
-		const yAxis = orderedAxis(ys);
-		const xSpan = enclosingSpan(xAxis, values[xParameter] ?? 0);
-		const ySpan = enclosingSpan(yAxis, values[yParameter] ?? 0);
-		if (!xSpan || !ySpan) return void 0;
-		const q00 = points.get(pointKey(xSpan.low, ySpan.low));
-		const q10 = points.get(pointKey(xSpan.high, ySpan.low));
-		const q01 = points.get(pointKey(xSpan.low, ySpan.high));
-		const q11 = points.get(pointKey(xSpan.high, ySpan.high));
-		if (![
-			q00,
-			q10,
-			q01,
-			q11
-		].every(finite$4)) return void 0;
-		const interpolation = normalizeParameterInterpolation(binding.interpolation);
-		const tx = applyParameterInterpolation(interpolation, ratio(values[xParameter] ?? 0, xSpan.low, xSpan.high), binding.curve);
-		const ty = applyParameterInterpolation(interpolation, ratio(values[yParameter] ?? 0, ySpan.low, ySpan.high), binding.curve);
-		const bottom = q00 + (q10 - q00) * tx;
-		return bottom + (q01 + (q11 - q01) * tx - bottom) * ty;
+		if (axisValues.some((axis) => axis.size < 2)) return void 0;
+		const spans = axisValues.map((axis, index) => enclosingSpan(orderedAxis(axis), values[parameters[index]] ?? 0));
+		if (spans.some((span) => !span)) return void 0;
+		let level = [];
+		for (let corner = 0; corner < 1 << parameters.length; corner += 1) {
+			const value = points.get(pointKey(spans.map((span, axis) => corner & 1 << axis ? span.high : span.low)));
+			if (!finite$4(value)) return void 0;
+			level.push(value);
+		}
+		const normalized = normalizeParameterInterpolation(interpolation);
+		for (let axis = 0; axis < parameters.length; axis += 1) {
+			const span = spans[axis];
+			const t = applyParameterInterpolation(normalized, ratio(values[parameters[axis]] ?? 0, span.low, span.high), curve);
+			const next = [];
+			for (let index = 0; index < level.length; index += 2) next.push(level[index] + (level[index + 1] - level[index]) * t);
+			level = next;
+		}
+		return level[0];
 	}
 	function enclosingSpan(axis, input) {
 		if (axis.length < 2) return void 0;
@@ -556,14 +924,14 @@ var StandRigEvaluation = (function(exports) {
 	function ratio(value, low, high) {
 		return Math.min(1, Math.max(0, (value - low) / (high - low || 1)));
 	}
-	function pointKey(x, y) {
-		return `${x}\u0000${y}`;
+	function pointKey(coordinates) {
+		return coordinates.join("\0");
 	}
 	function finite$4(value) {
 		return typeof value === "number" && Number.isFinite(value);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/warp.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/warp.ts
 	var resolvedPinScopes = /* @__PURE__ */ new WeakMap();
 	function defaultWarpDeformer() {
 		return {
@@ -585,13 +953,13 @@ var StandRigEvaluation = (function(exports) {
 		return {
 			enabled: warp?.enabled !== false,
 			pinBlendMode: warp?.pinBlendMode === "normalized" ? "normalized" : "legacy",
-			bendX: finiteNumber$1(warp?.bendX, fallback.bendX),
-			bendY: finiteNumber$1(warp?.bendY, fallback.bendY),
-			taperX: finiteNumber$1(warp?.taperX, fallback.taperX),
-			taperY: finiteNumber$1(warp?.taperY, fallback.taperY),
+			bendX: finiteNumber$2(warp?.bendX, fallback.bendX),
+			bendY: finiteNumber$2(warp?.bendY, fallback.bendY),
+			taperX: finiteNumber$2(warp?.taperX, fallback.taperX),
+			taperY: finiteNumber$2(warp?.taperY, fallback.taperY),
 			grid: {
-				columns: clampInteger(finiteNumber$1(grid?.columns, fallback.grid.columns), 1, 16),
-				rows: clampInteger(finiteNumber$1(grid?.rows, fallback.grid.rows), 1, 16)
+				columns: clampInteger(finiteNumber$2(grid?.columns, fallback.grid.columns), 1, 16),
+				rows: clampInteger(finiteNumber$2(grid?.rows, fallback.grid.rows), 1, 16)
 			},
 			pins: Array.isArray(warp?.pins) ? warp.pins.slice(0, 32).map((pin, index) => normalizeWarpPin(pin, index)) : []
 		};
@@ -602,12 +970,12 @@ var StandRigEvaluation = (function(exports) {
 			name: typeof pin?.name === "string" && pin.name.trim() ? pin.name : `Pin ${index + 1}`,
 			enabled: pin?.enabled !== false,
 			multiBindings: Array.isArray(pin?.multiBindings) ? structuredClone(pin.multiBindings) : [],
-			u: clamp01$3(finiteNumber$1(pin?.u, .5)),
-			v: clamp01$3(finiteNumber$1(pin?.v, .5)),
-			offsetX: finiteNumber$1(pin?.offsetX, 0),
-			offsetY: finiteNumber$1(pin?.offsetY, 0),
-			radius: clamp$3(finiteNumber$1(pin?.radius, .28), .001, 1.5),
-			strength: clamp$3(finiteNumber$1(pin?.strength, .75), 0, 1),
+			u: clamp01$5(finiteNumber$2(pin?.u, .5)),
+			v: clamp01$5(finiteNumber$2(pin?.v, .5)),
+			offsetX: finiteNumber$2(pin?.offsetX, 0),
+			offsetY: finiteNumber$2(pin?.offsetY, 0),
+			radius: clamp$3(finiteNumber$2(pin?.radius, .28), .001, 1.5),
+			strength: clamp$3(finiteNumber$2(pin?.strength, .75), 0, 1),
 			linkedMirrorId: typeof pin?.linkedMirrorId === "string" && pin.linkedMirrorId.trim() ? pin.linkedMirrorId : void 0,
 			bindings: Array.isArray(pin?.bindings) ? pin.bindings.slice(0, 16).map((binding) => normalizeWarpPinBinding(binding)) : []
 		};
@@ -615,8 +983,8 @@ var StandRigEvaluation = (function(exports) {
 	function normalizeWarpPinBinding(binding) {
 		const property = isWarpPinBindingProperty(binding?.property) ? binding.property : "offsetX";
 		const keys = Array.isArray(binding?.keys) ? binding.keys.map((key) => ({
-			input: finiteNumber$1(key?.input, 0),
-			value: finiteNumber$1(key?.value, 0)
+			input: finiteNumber$2(key?.input, 0),
+			value: finiteNumber$2(key?.value, 0)
 		})).sort((left, right) => left.input - right.input) : [];
 		return {
 			parameter: typeof binding?.parameter === "string" && binding.parameter.trim() ? binding.parameter : PARAMETER_IDS[0],
@@ -831,24 +1199,24 @@ var StandRigEvaluation = (function(exports) {
 	function hasWarpPinBindingEffect(pin) {
 		return (pin.bindings ?? []).some((binding) => binding.keys.some((key) => Math.abs(key.value) > .001));
 	}
-	function finiteNumber$1(value, fallback) {
+	function finiteNumber$2(value, fallback) {
 		return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 	}
 	function clampInteger(value, min, max) {
 		return Math.min(max, Math.max(min, Math.round(value)));
 	}
-	function clamp01$3(value) {
+	function clamp01$5(value) {
 		return clamp$3(value, 0, 1);
 	}
 	function clamp$3(value, min, max) {
 		return Math.min(max, Math.max(min, value));
 	}
 	function smoothstep01(value) {
-		const t = clamp01$3(value);
+		const t = clamp01$5(value);
 		return t * t * (3 - 2 * t);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/sharedWarp.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/sharedWarp.ts
 	/** Compile a snapshot for repeated sampling within one evaluation frame. */
 	function createSharedWarpSampler(field) {
 		const snapshot = {
@@ -938,10 +1306,19 @@ var StandRigEvaluation = (function(exports) {
 		return Math.min(max, Math.max(min, value));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/deformers.ts
-	function deformerForPart(part, deformers) {
-		if (part.deformerId) return deformers.find((deformer) => deformer.id === part.deformerId);
-		return deformers.find((deformer) => deformer.targetPartIds?.includes(part.id));
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/deformers.ts
+	/**
+	* `deformerForPart` for many parts of one deformer list: the same answers (the first deformer with the
+	* part's deformerId, else the first that targets the part) from maps built once instead of a scan per part.
+	*/
+	function createDeformerForPartLookup(deformers) {
+		const byId = /* @__PURE__ */ new Map();
+		const byTarget = /* @__PURE__ */ new Map();
+		for (const deformer of deformers) {
+			if (!byId.has(deformer.id)) byId.set(deformer.id, deformer);
+			for (const partId of deformer.targetPartIds ?? []) if (!byTarget.has(partId)) byTarget.set(partId, deformer);
+		}
+		return (part) => part.deformerId ? byId.get(part.deformerId) : byTarget.get(part.id);
 	}
 	var DEFAULT_PARAMETERS = [
 		{
@@ -1232,7 +1609,7 @@ var StandRigEvaluation = (function(exports) {
 		return values;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/partAffine.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/partAffine.ts
 	var FIELDS = [
 		"a",
 		"b",
@@ -1272,7 +1649,13 @@ var StandRigEvaluation = (function(exports) {
 		return result;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/evaluator.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/evaluator.ts
+	/**
+	* The physics state entry that carries the pendulum strands. Keeping them inside the caller's map (rather
+	* than beside it) lets callers copy the map entry by entry between frames, as Connect does for rollback;
+	* each evaluation stores a new strand state and leaves the previous one untouched.
+	*/
+	var PENDULUM_STATE_KEY = "\0pendulum";
 	var MIN_SCALE = .001;
 	/**
 	* Resolve one complete model frame for every renderer.
@@ -1328,7 +1711,7 @@ var StandRigEvaluation = (function(exports) {
 	/** Frame-local reuse only: editing a rig between calls always evaluates fresh data. */
 	function evaluateRigPartsWithDeformers(rig, values, baseMatrix, options, deformerStates) {
 		const byId = new Map(rig.parts.map((part) => [part.id, part]));
-		const deformers = rig.deformers ?? [];
+		const deformerOf = createDeformerForPartLookup(rig.deformers ?? []);
 		const computed = /* @__PURE__ */ new Map();
 		const visiting = /* @__PURE__ */ new Set();
 		const computePart = (part) => {
@@ -1356,7 +1739,7 @@ var StandRigEvaluation = (function(exports) {
 				pose: zeroPose(),
 				warp: void 0
 			};
-			const deformer = deformerForPart(part, deformers);
+			const deformer = deformerOf(part);
 			const deformerComputed = deformer ? deformerStates.get(deformer.id) : void 0;
 			const pose = resolvePartPose(part, values, options.physicsOffsets?.get(part.id));
 			const localMatrix = multiplyMatrices(multiplyMatrices(translateMatrix(pose.x, pose.y), rotateMatrix(pose.rotation)), scaleMatrix(safeScale(pose.scaleX), safeScale(pose.scaleY)));
@@ -1511,6 +1894,17 @@ var StandRigEvaluation = (function(exports) {
 				partOffset[chain.output.property] = (partOffset[chain.output.property] ?? 0) + physicsValue * chain.output.scale;
 				partOffsets.set(partId, partOffset);
 			}
+		}
+		const pendulum = rig.physics.pendulum;
+		if (pendulum?.settings?.length) {
+			const incoming = applyPhysicsParameterOffsets(values, parameterOffsets);
+			const result = evaluatePendulumPhysics(pendulum, new Map((rig.parameters ?? []).map((parameter) => [parameter.id, parameter])), incoming, safeDt, state.get(PENDULUM_STATE_KEY)?.pendulum);
+			state.set(PENDULUM_STATE_KEY, {
+				value: 0,
+				velocity: 0,
+				pendulum: result.state
+			});
+			for (const [parameter, value] of Object.entries(result.outputs)) parameterOffsets[parameter] = (parameterOffsets[parameter] ?? 0) + value - (incoming[parameter] ?? 0);
 		}
 		return {
 			partOffsets,
@@ -1668,7 +2062,7 @@ var StandRigEvaluation = (function(exports) {
 		return multiplyMatrices(multiplyMatrices(multiplyMatrices(translateMatrix(deformer.origin.x, deformer.origin.y), multiplyMatrices(translateMatrix(pose.x, pose.y), rotateMatrix(pose.rotation))), scaleMatrix(safeScale(pose.scaleX), safeScale(pose.scaleY))), translateMatrix(-deformer.origin.x, -deformer.origin.y));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/artMeshSurface.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/artMeshSurface.ts
 	var GRID = 8;
 	var cache = /* @__PURE__ */ new WeakMap();
 	/** Compose a measured 2D surface with expression/physics geometry. Adding the
@@ -1791,7 +2185,7 @@ var StandRigEvaluation = (function(exports) {
 		return (p.x - a.x - t * x) ** 2 + (p.y - a.y - t * y) ** 2;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/artMeshMulti.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/artMeshMulti.ts
 	function normalizedOffsets(raw) {
 		const seen = /* @__PURE__ */ new Set();
 		let unique = true;
@@ -1826,7 +2220,7 @@ var StandRigEvaluation = (function(exports) {
 		return result;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/denseOffsets.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/denseOffsets.ts
 	/** Snapshot-only numeric offset lanes. Editor calls retain the ordinary mutable path. */
 	function sampleDenseMulti(mesh, binding, values) {
 		const cache = evaluationCache();
@@ -1866,7 +2260,7 @@ var StandRigEvaluation = (function(exports) {
 		return result;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/artMesh.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/artMesh.ts
 	function isValidArtMesh(mesh, width, height) {
 		if (!(width === void 0 || height === void 0 || finite$3(width) && finite$3(height) && width > 0 && height > 0)) return false;
 		if (mesh && typeof mesh === "object" && evaluationCache()) return evaluationCache().get("valid-artmesh", mesh, () => validateArtMesh(mesh));
@@ -2024,7 +2418,7 @@ var StandRigEvaluation = (function(exports) {
 		};
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/skinning.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/skinning.ts
 	function applySkinningToVertex(vertex, skinning, transforms) {
 		const weights = skinning.vertexWeights[vertex.id] ?? [];
 		let x = 0;
@@ -2059,12 +2453,634 @@ var StandRigEvaluation = (function(exports) {
 		});
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/glue.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/drawOrder.ts
+	function keyformValue(keyform) {
+		return keyform.value;
+	}
+	/**
+	* The draw order a part sorts by at these parameter values: its keyed draw order when it has one
+	* (truncated to an integer when asked), otherwise the static `drawOrder`.
+	*/
+	function resolvePartDrawOrder(part, values) {
+		const binding = part.drawOrderBinding;
+		if (!binding) return part.drawOrder;
+		const sampled = sampleKeyformGrid(binding.parameters, binding.keyforms, keyformValue, values);
+		if (sampled === void 0) return part.drawOrder;
+		return binding.rounding === "truncate" ? Math.trunc(sampled + .001) : sampled;
+	}
+	/**
+	* Back-to-front copy of `parts` at these values. The sort is stable, so equal draw orders keep
+	* their order in `parts`.
+	*/
+	function sortPartsByDrawOrder(parts, values) {
+		if (!parts.some((part) => part.drawOrderBinding !== void 0)) return [...parts].sort((left, right) => left.drawOrder - right.drawOrder);
+		const orders = new Map(parts.map((part) => [part, resolvePartDrawOrder(part, values)]));
+		return [...parts].sort((left, right) => orders.get(left) - orders.get(right));
+	}
+	/** True when any group part sorts its image descendants as one unit (a draw order group). */
+	function hasDrawOrderGroups(parts) {
+		return parts.some((part) => part.kind === "group" && part.drawOrderGroup === true);
+	}
+	/**
+	* Back-to-front paint order of `parts` (image parts of `allParts`) at these values.
+	*
+	* Without draw order groups this is `sortPartsByDrawOrder`. With them it is a hierarchical
+	* sort: an image part sorts only among the members of its nearest `drawOrderGroup` ancestor (or the
+	* top level), a group occupies one slot among its own siblings positioned by its own draw order, and
+	* equal draw orders keep `allParts` order. Groups without the flag do not affect sorting.
+	*/
+	function sortPartsForPaint(allParts, parts, values) {
+		if (!hasDrawOrderGroups(allParts)) return sortPartsByDrawOrder(parts, values);
+		const byId = new Map(allParts.map((part) => [part.id, part]));
+		const indexOf = new Map(allParts.map((part, index) => [part.id, index]));
+		const groupOf = (part) => {
+			const seen = /* @__PURE__ */ new Set([part.id]);
+			for (let current = part.parentId ? byId.get(part.parentId) : void 0; current && !seen.has(current.id); current = current.parentId ? byId.get(current.parentId) : void 0) {
+				seen.add(current.id);
+				if (current.kind === "group" && current.drawOrderGroup === true) return current.id;
+			}
+			return null;
+		};
+		const members = /* @__PURE__ */ new Map();
+		const add = (key, slot) => {
+			const list = members.get(key);
+			if (list) list.push(slot);
+			else members.set(key, [slot]);
+		};
+		for (const leaf of parts) add(groupOf(leaf), {
+			part: leaf,
+			leaf,
+			order: resolvePartDrawOrder(leaf, values),
+			index: indexOf.get(leaf.id) ?? Number.MAX_SAFE_INTEGER
+		});
+		for (const group of allParts) if (group.kind === "group" && group.drawOrderGroup === true) add(groupOf(group), {
+			part: group,
+			order: resolvePartDrawOrder(group, values),
+			index: indexOf.get(group.id)
+		});
+		const result = [];
+		const emit = (key, depth) => {
+			const list = members.get(key);
+			if (!list || depth > allParts.length) return;
+			list.sort((left, right) => left.order - right.order || left.index - right.index);
+			for (const slot of list) if (slot.leaf) result.push(slot.leaf);
+			else emit(slot.part.id, depth + 1);
+		};
+		emit(null, 0);
+		return result;
+	}
+	//#endregion
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/tracking.ts
+	var DEFAULT_TRACKING_INPUTS$1 = [
+		{
+			id: "faceYaw",
+			label: "Face X",
+			min: -1,
+			max: 1,
+			default: 0,
+			step: .01
+		},
+		{
+			id: "facePitch",
+			label: "Face Y",
+			min: -1,
+			max: 1,
+			default: 0,
+			step: .01
+		},
+		{
+			id: "faceRoll",
+			label: "Face Z",
+			min: -1,
+			max: 1,
+			default: 0,
+			step: .01
+		},
+		{
+			id: "bodyYaw",
+			label: "Body X",
+			min: -1,
+			max: 1,
+			default: 0,
+			step: .01
+		},
+		{
+			id: "bodyPitch",
+			label: "Body Y",
+			min: -1,
+			max: 1,
+			default: 0,
+			step: .01
+		},
+		{
+			id: "mouthOpen",
+			label: "Mouth",
+			min: 0,
+			max: 1,
+			default: .12,
+			step: .01
+		},
+		{
+			id: "mouthForm",
+			label: "Mouth Form",
+			min: -1,
+			max: 1,
+			default: 0,
+			step: .01
+		},
+		{
+			id: "mouthSmile",
+			label: "Mouth Smile",
+			min: -1,
+			max: 1,
+			default: 0,
+			step: .01
+		},
+		{
+			id: "eyeLOpen",
+			label: "Eye L",
+			min: 0,
+			max: 1,
+			default: 1,
+			step: .01
+		},
+		{
+			id: "eyeROpen",
+			label: "Eye R",
+			min: 0,
+			max: 1,
+			default: 1,
+			step: .01
+		},
+		{
+			id: "eyeBallX",
+			label: "Eye Ball X",
+			min: -1,
+			max: 1,
+			default: 0,
+			step: .01
+		},
+		{
+			id: "eyeBallY",
+			label: "Eye Ball Y",
+			min: -1,
+			max: 1,
+			default: 0,
+			step: .01
+		},
+		{
+			id: "browLY",
+			label: "Brow L Y",
+			min: -1,
+			max: 1,
+			default: 0,
+			step: .01
+		},
+		{
+			id: "browRY",
+			label: "Brow R Y",
+			min: -1,
+			max: 1,
+			default: 0,
+			step: .01
+		},
+		{
+			id: "cheek",
+			label: "Cheek",
+			min: 0,
+			max: 1,
+			default: 0,
+			step: .01
+		}
+	];
+	var DEFAULT_TRACKING_EYE_GAIN$1 = 1.25;
+	var DEFAULT_TRACKING_EYE_SYNC$1 = {
+		enabled: false,
+		winkThreshold: .35,
+		winkCurve: "hard",
+		leftGain: DEFAULT_TRACKING_EYE_GAIN$1,
+		rightGain: DEFAULT_TRACKING_EYE_GAIN$1
+	};
+	var DEFAULT_ONE_EURO_FILTER$1 = {
+		minCutoff: 1.1,
+		beta: .08,
+		derivativeCutoff: 1
+	};
+	var DEFAULT_MAPPING_SPECS$1 = [
+		{
+			source: "faceYaw",
+			parameter: "ParamAngleX",
+			scale: 36,
+			offset: 0,
+			min: -30,
+			max: 30,
+			smoothing: .08,
+			filter: "one-euro",
+			oneEuro: {
+				...DEFAULT_ONE_EURO_FILTER$1,
+				beta: .1
+			}
+		},
+		{
+			source: "facePitch",
+			parameter: "ParamAngleY",
+			scale: 42,
+			offset: 0,
+			min: -30,
+			max: 30,
+			smoothing: .08,
+			filter: "one-euro",
+			oneEuro: {
+				...DEFAULT_ONE_EURO_FILTER$1,
+				beta: .1
+			}
+		},
+		{
+			source: "faceRoll",
+			parameter: "ParamAngleZ",
+			scale: 36,
+			offset: 0,
+			min: -30,
+			max: 30,
+			smoothing: .08,
+			filter: "one-euro",
+			oneEuro: {
+				...DEFAULT_ONE_EURO_FILTER$1,
+				beta: .08
+			}
+		},
+		{
+			source: "bodyYaw",
+			parameter: "ParamBodyAngleX",
+			scale: 24,
+			offset: 0,
+			min: -30,
+			max: 30,
+			smoothing: .16,
+			filter: "one-euro",
+			oneEuro: {
+				...DEFAULT_ONE_EURO_FILTER$1,
+				minCutoff: .9,
+				beta: .08
+			}
+		},
+		{
+			source: "bodyPitch",
+			parameter: "ParamBodyAngleY",
+			scale: 28,
+			offset: 0,
+			min: -30,
+			max: 30,
+			smoothing: .16,
+			filter: "one-euro",
+			oneEuro: {
+				...DEFAULT_ONE_EURO_FILTER$1,
+				minCutoff: .9,
+				beta: .08
+			}
+		},
+		{
+			source: "mouthOpen",
+			parameter: "ParamMouthOpen",
+			scale: 1,
+			offset: 0,
+			min: 0,
+			max: 1,
+			smoothing: .12
+		},
+		{
+			source: "mouthForm",
+			parameter: "ParamMouthForm",
+			scale: 1,
+			offset: 0,
+			min: -1,
+			max: 1,
+			smoothing: .18
+		},
+		{
+			source: "mouthSmile",
+			parameter: "ParamMouthSmile",
+			scale: 1,
+			offset: 0,
+			min: -1,
+			max: 1,
+			smoothing: .18
+		},
+		{
+			source: "eyeLOpen",
+			parameter: "ParamEyeLOpen",
+			scale: 1,
+			offset: 0,
+			min: 0,
+			max: 1,
+			smoothing: .08
+		},
+		{
+			source: "eyeROpen",
+			parameter: "ParamEyeROpen",
+			scale: 1,
+			offset: 0,
+			min: 0,
+			max: 1,
+			smoothing: .08
+		},
+		{
+			source: "eyeBallX",
+			parameter: "ParamEyeBallX",
+			scale: 1,
+			offset: 0,
+			min: -1,
+			max: 1,
+			smoothing: .15
+		},
+		{
+			source: "eyeBallY",
+			parameter: "ParamEyeBallY",
+			scale: 1,
+			offset: 0,
+			min: -1,
+			max: 1,
+			smoothing: .15
+		},
+		{
+			source: "browLY",
+			parameter: "ParamBrowLY",
+			scale: 1,
+			offset: 0,
+			min: -1,
+			max: 1,
+			smoothing: .2
+		},
+		{
+			source: "browRY",
+			parameter: "ParamBrowRY",
+			scale: 1,
+			offset: 0,
+			min: -1,
+			max: 1,
+			smoothing: .2
+		},
+		{
+			source: "cheek",
+			parameter: "ParamCheek",
+			scale: 1,
+			offset: 0,
+			min: 0,
+			max: 1,
+			smoothing: .25
+		}
+	];
+	function createDefaultTracking$1(rig) {
+		const context = defaultMappingContext(rig);
+		return {
+			enabled: false,
+			provider: "manual",
+			inputSmoothing: .25,
+			mappings: DEFAULT_MAPPING_SPECS$1.map((mapping, index) => normalizeTrackingMapping$1({
+				id: `tracking-map-${index + 1}`,
+				enabled: true,
+				...defaultMappingForRig(mapping, context)
+			}, rig, index)),
+			eyeSync: { ...DEFAULT_TRACKING_EYE_SYNC$1 }
+		};
+	}
+	/** A common alternative name for a standard parameter, used when a rig authors only the alternative. */
+	var ALTERNATE_PARAMETER_NAMES = { ParamMouthOpen: "ParamMouthOpenY" };
+	function defaultMappingContext(rig) {
+		return {
+			rig,
+			authored: new Map((rig.parameters ?? []).map((parameter) => [parameter.id, parameter])),
+			ranges: new Map(parameterDefinitionsForRig$1(rig).map((parameter) => [parameter.id, parameter])),
+			claimed: /* @__PURE__ */ new Set()
+		};
+	}
+	/** Gains below this do not move the output enough to drive it through the input. */
+	var MINIMUM_PENDULUM_GAIN$1 = 1e-6;
+	/**
+	* A default mapping adapted to the rig. A rig may name the mouth ParamMouthOpenY. A rig may also drive
+	* ParamAngleX and the like through a pendulum that overwrites them from an input of its own (AngleX,
+	* PositionX, ...), so writing the angle directly would be undone every frame: the mapping writes that
+	* input instead (the largest-weight input that no pendulum writes and that the output follows). The
+	* input receives the tracked value in its own range, and the pendulum shapes the response as the model's author set it up (smoothing, gain,
+	* different strength on each side); the mapping is inverted only where the pendulum mirrors the input.
+	*/
+	function defaultMappingForRig(spec, context) {
+		const { rig, authored, ranges, claimed } = context;
+		let parameter = spec.parameter;
+		const alternateName = ALTERNATE_PARAMETER_NAMES[parameter];
+		if (alternateName && !authored.has(parameter) && authored.has(alternateName)) parameter = alternateName;
+		const pendulum = rig.physics?.enabled ? rig.physics.pendulum : void 0;
+		if (pendulum?.settings?.length) {
+			const written = new Set(pendulum.settings.flatMap((setting) => setting.enabled === false ? [] : setting.outputs.map((output) => output.parameter)));
+			for (const setting of pendulumSettingsOverwriting(pendulum, parameter)) {
+				const candidates = setting.inputs.filter((input) => authored.has(input.parameter) && !written.has(input.parameter) && !claimed.has(input.parameter)).sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
+				for (const candidate of candidates) {
+					const input = authored.get(candidate.parameter);
+					const gain = pendulumSettledGain(pendulum, ranges, setting, input.id, parameter);
+					if (!(Math.abs(gain) > MINIMUM_PENDULUM_GAIN$1)) continue;
+					const spanned = Number.isFinite(spec.min) && Number.isFinite(spec.max) && spec.max !== spec.min;
+					const ratio = spanned ? (input.max - input.min) / (Number(spec.max) - Number(spec.min)) : 1;
+					claimed.add(input.id);
+					return {
+						...spec,
+						parameter: input.id,
+						scale: spec.scale * ratio,
+						offset: spanned ? input.min + (spec.offset - Number(spec.min)) * ratio : spec.offset,
+						min: spanned ? input.min : spec.min,
+						max: spanned ? input.max : spec.max,
+						invert: gain < 0 ? !spec.invert : spec.invert
+					};
+				}
+			}
+		}
+		claimed.add(parameter);
+		return parameter === spec.parameter ? spec : {
+			...spec,
+			parameter
+		};
+	}
+	function normalizeTrackingMapping$1(mapping, rig, index) {
+		const sourceIds = new Set(DEFAULT_TRACKING_INPUTS$1.map((input) => input.id));
+		const parameterIds = new Set(parameterDefinitionsForRig$1(rig).map((parameter) => parameter.id));
+		const fallbackSpec = DEFAULT_MAPPING_SPECS$1[index % DEFAULT_MAPPING_SPECS$1.length] ?? DEFAULT_MAPPING_SPECS$1[0];
+		const source = typeof mapping.source === "string" && sourceIds.has(mapping.source) ? mapping.source : fallbackSpec.source;
+		const parameter = typeof mapping.parameter === "string" && parameterIds.has(mapping.parameter) ? mapping.parameter : fallbackSpec.parameter;
+		return {
+			id: typeof mapping.id === "string" && mapping.id.trim() ? mapping.id : `tracking-map-${index + 1}`,
+			enabled: typeof mapping.enabled === "boolean" ? mapping.enabled : true,
+			source,
+			parameter,
+			scale: finiteNumber$1(mapping.scale, fallbackSpec.scale),
+			offset: finiteNumber$1(mapping.offset, fallbackSpec.offset),
+			min: optionalFiniteNumber$1(mapping.min),
+			max: optionalFiniteNumber$1(mapping.max),
+			smoothing: clamp01$4(finiteNumber$1(mapping.smoothing, fallbackSpec.smoothing)),
+			invert: mapping.invert === true,
+			deadZone: normalizeDeadZone$1(mapping.deadZone),
+			filter: mapping.filter === "one-euro" ? "one-euro" : mapping.filter === "ema" ? "ema" : fallbackSpec.filter ?? "ema",
+			oneEuro: normalizeOneEuroOptions$1(mapping.oneEuro ?? fallbackSpec.oneEuro),
+			responseCurve: normalizeResponseCurve$1(mapping.responseCurve ?? fallbackSpec.responseCurve),
+			responseGamma: normalizeResponseGamma$1(mapping.responseGamma ?? fallbackSpec.responseGamma)
+		};
+	}
+	function normalizeResponseCurve$1(value) {
+		return value === "smoothstep" || value === "gamma" ? value : "linear";
+	}
+	function normalizeResponseGamma$1(value) {
+		return Math.min(4, Math.max(.25, finiteNumber$1(value, 1)));
+	}
+	function normalizeOneEuroOptions$1(value) {
+		const record = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+		return {
+			minCutoff: Math.max(.01, finiteNumber$1(record.minCutoff, DEFAULT_ONE_EURO_FILTER$1.minCutoff)),
+			beta: Math.max(0, finiteNumber$1(record.beta, DEFAULT_ONE_EURO_FILTER$1.beta)),
+			derivativeCutoff: Math.max(.01, finiteNumber$1(record.derivativeCutoff, DEFAULT_ONE_EURO_FILTER$1.derivativeCutoff))
+		};
+	}
+	function normalizeDeadZone$1(value) {
+		if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return;
+		return Math.min(.95, value);
+	}
+	function finiteNumber$1(value, fallback) {
+		return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+	}
+	function optionalFiniteNumber$1(value) {
+		return typeof value === "number" && Number.isFinite(value) ? value : void 0;
+	}
+	function clamp01$4(value) {
+		return Math.min(1, Math.max(0, value));
+	}
+	//#endregion
+	//#region scripts/evaluation/tracking-redirects.ts
+	/** The parameters Connect's tracking, idle and demo layers write, in StandRig's default-tracking order. */
+	var STANDARD_PARAMETERS = [
+		"ParamAngleX",
+		"ParamAngleY",
+		"ParamAngleZ",
+		"ParamBodyAngleX",
+		"ParamBodyAngleY",
+		"ParamBodyAngleZ",
+		"ParamMouthOpen",
+		"ParamMouthForm",
+		"ParamEyeLOpen",
+		"ParamEyeROpen",
+		"ParamEyeBallX",
+		"ParamEyeBallY"
+	];
+	var ALTERNATE_NAMES = { ParamMouthOpen: "ParamMouthOpenY" };
+	var MINIMUM_PENDULUM_GAIN = 1e-6;
+	/** StandRig's tracking source behind each angle parameter Connect writes. */
+	var ANGLE_SOURCES = {
+		ParamAngleX: "faceYaw",
+		ParamAngleY: "facePitch",
+		ParamAngleZ: "faceRoll",
+		ParamBodyAngleX: "bodyYaw",
+		ParamBodyAngleY: "bodyPitch"
+	};
+	/** StandRig's default scale from each angle source to its standard parameter (range -30..30). */
+	function defaultAngleScales(rig) {
+		const parameters = Object.keys(ANGLE_SOURCES).map((id) => ({
+			id,
+			label: id,
+			min: -30,
+			max: 30,
+			default: 0
+		}));
+		const tracking = createDefaultTracking$1({
+			...rig,
+			parameters,
+			physics: {
+				enabled: false,
+				chains: []
+			}
+		});
+		return new Map(tracking.mappings.filter((mapping) => ANGLE_SOURCES[mapping.parameter] === mapping.source).map((mapping) => [mapping.source, mapping.scale]));
+	}
+	function trackingRedirects(rig) {
+		const authored = new Map((rig.parameters ?? []).map((parameter) => [parameter.id, parameter]));
+		const ranges = new Map(parameterDefinitionsForRig$1(rig).map((parameter) => [parameter.id, parameter]));
+		const pendulum = rig.physics?.enabled ? rig.physics.pendulum : void 0;
+		const written = /* @__PURE__ */ new Set();
+		for (const setting of pendulum?.settings ?? []) if (setting.enabled !== false) for (const output of setting.outputs) written.add(output.parameter);
+		const claimed = /* @__PURE__ */ new Set();
+		const redirects = [];
+		const authorMappings = Array.isArray(rig.tracking?.mappings) && rig.tracking.mappings.length ? rig.tracking.mappings : void 0;
+		const angleScales = authorMappings ? defaultAngleScales(rig) : void 0;
+		for (const requested of STANDARD_PARAMETERS) {
+			let parameter = requested;
+			const alternateName = ALTERNATE_NAMES[parameter];
+			if (alternateName && !authored.has(parameter) && authored.has(alternateName)) parameter = alternateName;
+			const source = ANGLE_SOURCES[requested];
+			if (source && authorMappings && pendulum?.settings?.length && pendulumSettingsOverwriting(pendulum, parameter).length) {
+				const mapped = authorMappings.filter((mapping) => mapping.enabled !== false && mapping.source === source);
+				const targets = mapped.filter((mapping) => mapping.parameter !== requested && authored.has(mapping.parameter) && Number.isFinite(mapping.scale));
+				const scale = angleScales.get(source), from = ranges.get(requested);
+				if (!mapped.length) continue;
+				if (targets.length && scale && from) {
+					for (const mapping of targets) {
+						const to = ranges.get(mapping.parameter);
+						if (!to) continue;
+						claimed.add(mapping.parameter);
+						redirects.push({
+							from: requested,
+							to: mapping.parameter,
+							factor: mapping.scale / scale * (mapping.invert ? -1 : 1),
+							fromDefault: from.default,
+							min: to.min,
+							max: to.max,
+							viaPendulum: true
+						});
+					}
+					continue;
+				}
+			}
+			let target = parameter, mirrored = false, viaPendulum = false;
+			if (pendulum?.settings?.length) search: for (const setting of pendulumSettingsOverwriting(pendulum, parameter)) {
+				const candidates = setting.inputs.filter((input) => authored.has(input.parameter) && !written.has(input.parameter) && !claimed.has(input.parameter)).sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
+				for (const candidate of candidates) {
+					const gain = pendulumSettledGain(pendulum, ranges, setting, candidate.parameter, parameter);
+					if (!(Math.abs(gain) > MINIMUM_PENDULUM_GAIN)) continue;
+					target = candidate.parameter;
+					mirrored = gain < 0;
+					viaPendulum = true;
+					break search;
+				}
+			}
+			claimed.add(target);
+			if (target === requested) continue;
+			const from = ranges.get(requested), to = ranges.get(target);
+			if (!from || !to) continue;
+			const span = from.max - from.min;
+			const factor = (span !== 0 ? (to.max - to.min) / span : 1) * (mirrored ? -1 : 1);
+			redirects.push({
+				from: requested,
+				to: target,
+				factor,
+				fromDefault: from.default,
+				min: to.min,
+				max: to.max,
+				viaPendulum
+			});
+		}
+		return redirects;
+	}
+	/** Adds each redirected parameter's change from its default to its target, in place. */
+	function applyTrackingRedirects(values, redirects, physics) {
+		for (const redirect of redirects) {
+			if (redirect.viaPendulum && !physics) continue;
+			const value = values[redirect.from];
+			if (value === void 0 || value === redirect.fromDefault) continue;
+			const base = values[redirect.to] ?? 0;
+			values[redirect.to] = Math.min(redirect.max, Math.max(redirect.min, base + (value - redirect.fromDefault) * redirect.factor));
+		}
+	}
+	//#endregion
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/glue.ts
 	function readRigGlue(rig) {
 		return Array.isArray(rig.glue) ? rig.glue : [];
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/glueWarp.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/glueWarp.ts
 	function resolveGlueWarpForPart(rig, part, state, size, computed, sizeForPart) {
 		const gluePins = gluePinsForPart(rig, part, state, size, computed, sizeForPart);
 		if (!gluePins.length) return state.warp;
@@ -2108,10 +3124,10 @@ var StandRigEvaluation = (function(exports) {
 		const otherLeft = -otherState.pose.pivotX * otherSize.width;
 		const otherTop = -otherState.pose.pivotY * otherSize.height;
 		const anchor = {
-			x: left + clamp01$2(currentUv.u) * size.width,
-			y: top + clamp01$2(currentUv.v) * size.height
+			x: left + clamp01$3(currentUv.u) * size.width,
+			y: top + clamp01$3(currentUv.v) * size.height
 		};
-		const otherAnchorWorld = transformMatrixPoint(otherState.matrix, otherLeft + clamp01$2(otherUv.u) * otherSize.width, otherTop + clamp01$2(otherUv.v) * otherSize.height);
+		const otherAnchorWorld = transformMatrixPoint(otherState.matrix, otherLeft + clamp01$3(otherUv.u) * otherSize.width, otherTop + clamp01$3(otherUv.v) * otherSize.height);
 		const otherAnchorLocal = transformMatrixPoint(invertMatrix(state.matrix), otherAnchorWorld.x, otherAnchorWorld.y);
 		const vector = {
 			x: otherAnchorLocal.x - anchor.x,
@@ -2123,8 +3139,8 @@ var StandRigEvaluation = (function(exports) {
 			x: vector.x / length,
 			y: vector.y / length
 		};
-		const clampedWeight = clamp01$2(weight);
-		const clampedStrength = clamp01$2(point.strength ?? glueStrength);
+		const clampedWeight = clamp01$3(weight);
+		const clampedStrength = clamp01$3(point.strength ?? glueStrength);
 		const maxOffset = clamp$1(Math.min(size.width, size.height) * .06, 2, 28);
 		const magnitude = Math.min(length * .24, maxOffset) * clampedStrength * (.35 + clampedWeight * .65);
 		if (magnitude < .05) return;
@@ -2132,8 +3148,8 @@ var StandRigEvaluation = (function(exports) {
 			id: `glue-${glueId}-${index}`,
 			name: `Glue ${glueId} ${index + 1}`,
 			enabled: true,
-			u: clamp01$2(currentUv.u),
-			v: clamp01$2(currentUv.v),
+			u: clamp01$3(currentUv.u),
+			v: clamp01$3(currentUv.v),
 			offsetX: direction.x * magnitude,
 			offsetY: direction.y * magnitude,
 			radius: clamp$1(point.radius ?? .16 + clampedStrength * .34, .08, .7),
@@ -2165,10 +3181,10 @@ var StandRigEvaluation = (function(exports) {
 			x: center.x + direction.x * edgeDistance,
 			y: center.y + direction.y * edgeDistance
 		};
-		const u = clamp01$2((anchor.x - left) / size.width);
-		const v = clamp01$2((anchor.y - top) / size.height);
-		const clampedWeight = clamp01$2(weight);
-		const clampedStrength = clamp01$2(strength);
+		const u = clamp01$3((anchor.x - left) / size.width);
+		const v = clamp01$3((anchor.y - top) / size.height);
+		const clampedWeight = clamp01$3(weight);
+		const clampedStrength = clamp01$3(strength);
 		const magnitude = clamp$1(Math.min(size.width, size.height) * .045, 2, 24) * clampedStrength * (.35 + clampedWeight * .65);
 		if (magnitude < .05) return;
 		return {
@@ -2227,14 +3243,14 @@ var StandRigEvaluation = (function(exports) {
 			}))
 		};
 	}
-	function clamp01$2(value) {
+	function clamp01$3(value) {
 		return clamp$1(value, 0, 1);
 	}
 	function clamp$1(value, min, max) {
 		return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/sharedWarpProjection.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/sharedWarpProjection.ts
 	/**
 	* Converts a part-local point through its evaluated matrix, applies every
 	* enabled shared field in stable parent-to-child order in stage coordinates,
@@ -2267,7 +3283,7 @@ var StandRigEvaluation = (function(exports) {
 		};
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/glueVertex.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/glueVertex.ts
 	/**
 	* Vertex-level glue ("stitch").
 	*
@@ -2318,7 +3334,7 @@ var StandRigEvaluation = (function(exports) {
 			partBId: glue.partBId,
 			aVertexId: pair.a,
 			bVertexId: pair.b,
-			weight: clamp01$1(pair.weight ?? weightFromGlue(glue)),
+			weight: clamp01$2(pair.weight ?? weightFromGlue(glue)),
 			restDx: Number.isFinite(pair.restDx) ? pair.restDx : 0,
 			restDy: Number.isFinite(pair.restDy) ? pair.restDy : 0
 		});
@@ -2456,11 +3472,11 @@ var StandRigEvaluation = (function(exports) {
 	function isFinitePoint(point) {
 		return Number.isFinite(point.x) && Number.isFinite(point.y);
 	}
-	function clamp01$1(value) {
+	function clamp01$2(value) {
 		return Math.min(1, Math.max(0, Number.isFinite(value) ? value : .5));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/mask.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/mask.ts
 	/**
 	* Resolves the closest clip owner from a renderable part up through its part
 	* parents. This lets related interior layers share one alpha-union mask without
@@ -2503,7 +3519,7 @@ var StandRigEvaluation = (function(exports) {
 		return [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))];
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/artPath.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/artPath.ts
 	function readRigArtPaths(part) {
 		return Array.isArray(part.artPaths) ? part.artPaths : [];
 	}
@@ -2646,6 +3662,52 @@ var StandRigEvaluation = (function(exports) {
 		});
 	}
 	//#endregion
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/blendColors.ts
+	var WHITE = [
+		1,
+		1,
+		1
+	];
+	var BLACK = [
+		0,
+		0,
+		0
+	];
+	/**
+	* The multiply and screen colors a part draws with at these values, or undefined when they leave
+	* the texture unchanged (white multiply, black screen), so callers can skip the pixel pass.
+	*/
+	function resolvePartBlendColors(part, values) {
+		const colors = part.blendColors;
+		if (!colors) return void 0;
+		const staticMultiply = validRgb(colors.multiply) ? colors.multiply : WHITE;
+		const staticScreen = validRgb(colors.screen) ? colors.screen : BLACK;
+		let multiply = staticMultiply, screen = staticScreen;
+		if (colors.parameters && colors.keyforms?.length) {
+			multiply = sampleRgb(colors, values, (keyform) => keyform.multiply ?? staticMultiply) ?? staticMultiply;
+			screen = sampleRgb(colors, values, (keyform) => keyform.screen ?? staticScreen) ?? staticScreen;
+		}
+		if (multiply.every((channel) => channel === 1) && screen.every((channel) => channel === 0)) return void 0;
+		return {
+			multiply,
+			screen
+		};
+	}
+	function sampleRgb(colors, values, colorOf) {
+		const channels = [
+			0,
+			1,
+			2
+		].map((channel) => sampleKeyformGrid(colors.parameters, colors.keyforms, (keyform) => colorOf(keyform)[channel], values));
+		return channels.every((channel) => channel !== void 0) ? channels.map((channel) => clamp01$1(channel)) : void 0;
+	}
+	function validRgb(color) {
+		return Array.isArray(color) && color.length === 3 && color.every((channel) => typeof channel === "number" && Number.isFinite(channel) && channel >= 0 && channel <= 1);
+	}
+	function clamp01$1(value) {
+		return Math.min(1, Math.max(0, value));
+	}
+	//#endregion
 	//#region scripts/evaluation/final-geometry.ts
 	function finalGeometry(rig, frame, baseMatrix, parts) {
 		const assets = new Map(rig.assets.map((a) => [a.id, a]));
@@ -2662,7 +3724,11 @@ var StandRigEvaluation = (function(exports) {
 				void 0,
 				"rendered",
 				"ignore"
-			].includes(part.clip.maskOpacity)) throw Error("invalid clip " + part.id);
+			].includes(part.clip.maskOpacity) || ![
+				void 0,
+				true,
+				false
+			].includes(part.clip.invert)) throw Error("invalid clip " + part.id);
 		}
 		for (const entry of parts) {
 			const part = sourceParts.get(entry.id);
@@ -2722,16 +3788,18 @@ var StandRigEvaluation = (function(exports) {
 				};
 			});
 			const clip = resolveClip(part);
+			const clipRecord = clip ? {
+				ownerId: clip.owner.id,
+				maskPartIds: clip.maskPartIds,
+				maskOpacity: clip.clip.maskOpacity ?? "rendered",
+				...clip.clip.invert === true ? { invert: true } : {}
+			} : null;
 			geometries.set(entry.id, {
 				entry,
 				part,
 				mesh,
 				paths: pathGeometry(part, frame.values, context),
-				clip: clip ? {
-					ownerId: clip.owner.id,
-					maskPartIds: clip.maskPartIds,
-					maskOpacity: clip.clip.maskOpacity ?? "rendered"
-				} : null,
+				clip: clipRecord,
 				vertices,
 				byId: void 0
 			});
@@ -2762,6 +3830,7 @@ var StandRigEvaluation = (function(exports) {
 				opacity: g.entry.state.opacity,
 				clip: g.clip,
 				geometrySource: g.entry.localMesh ? "artmesh" : "image-grid",
+				colors: resolvePartBlendColors(g.part, frame.values) ?? null,
 				vertices: stitchedVertices(g, stitches?.offsets.get(g.part.id)),
 				triangles: g.mesh.triangles,
 				paths: g.paths
@@ -7549,7 +8618,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/motion.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/motion.ts
 	function object$1(value, keys) {
 		if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((k) => !keys.includes(k))) throw Error("invalid motion object/unknown field");
 	}
@@ -7653,7 +8722,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return Object.fromEntries(clip.tracks.map((t) => [t.parameter, sampleMotionTrack(t, time)]));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/facial.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/facial.ts
 	var jsonClone$1 = (value) => JSON.parse(JSON.stringify(value));
 	var VISEME_IDS = [
 		"A",
@@ -7768,7 +8837,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return jsonClone$1(value);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/runtime/src/facial.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/runtime/src/facial.ts
 	var jsonClone = (value) => JSON.parse(JSON.stringify(value));
 	var weight = (f, now) => f.duration === 0 ? f.to : f.from + (f.to - f.from) * Math.max(0, Math.min(1, (now - f.start) / f.duration));
 	var finiteSaturation = (v) => Math.max(-Number.MAX_VALUE, Math.min(Number.MAX_VALUE, v));
@@ -7803,10 +8872,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			this.fades(this.visemes, now);
 			return {
 				expressionId: this.expressionId,
+				activeExpressions: this.activeExpressions(),
 				expressionWeights: Object.fromEntries([...this.expressions].map(([id, f]) => [id, weight(f, now)])),
 				visemeWeights: Object.fromEntries([...this.visemes].map(([id, f]) => [id, weight(f, now)])),
 				transitioning: [...this.expressions.values(), ...this.visemes.values()].some((f) => now < f.start + f.duration)
 			};
+		}
+		/** Expressions whose fade heads to a nonzero weight, oldest first (re-activation moves one to the end). */
+		activeExpressions() {
+			return [...this.expressions].filter(([, f]) => f.to > 0).map(([id]) => id);
 		}
 		strength(value) {
 			if (value !== void 0 && (!Number.isFinite(value) || value < 0 || value > 1)) throw Error("facial strength must be in [0,1]");
@@ -7827,7 +8901,12 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		command(request, now) {
 			this.clock(now);
 			if (!request || typeof request !== "object" || Array.isArray(request)) throw Error("invalid facial command");
-			const allowed = request.action === "expression" || request.action === "viseme" ? [
+			const allowed = request.action === "expression" ? [
+				"action",
+				"id",
+				"strength",
+				"stack"
+			] : request.action === "viseme" ? [
 				"action",
 				"id",
 				"strength"
@@ -7842,8 +8921,21 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				const entry = this.presets.expressions.find((e) => e.id === request.id);
 				if (!entry) throw Error("unknown expression ID");
 				const strength = this.strength(request.strength);
-				this.transition(this.expressions, /* @__PURE__ */ new Map([[entry.id, strength]]), now, entry.document.FadeInTime ?? .2, outExpression);
-				this.expressionId = strength ? entry.id : null;
+				if (request.stack !== void 0 && typeof request.stack !== "boolean") throw Error("expression stack must be boolean");
+				if (request.stack) {
+					const current = this.expressions.get(entry.id), from = current ? weight(current, now) : 0, inSeconds = entry.document.FadeInTime ?? .2;
+					this.expressions.delete(entry.id);
+					if (from !== 0 || strength !== 0) this.expressions.set(entry.id, {
+						from,
+						to: strength,
+						start: now,
+						duration: 1e3 * (strength > from ? inSeconds : outExpression(entry.id))
+					});
+					this.expressionId = strength ? entry.id : this.activeExpressions().at(-1) ?? null;
+				} else {
+					this.transition(this.expressions, /* @__PURE__ */ new Map([[entry.id, strength]]), now, entry.document.FadeInTime ?? .2, outExpression);
+					this.expressionId = strength ? entry.id : null;
+				}
 			} else if (request.action === "viseme" || request.action === "visemes") {
 				const bank = this.presets.visemes;
 				if (!bank) throw Error("no viseme bank");
@@ -7934,7 +9026,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}
 	};
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/runtime/src/physicsStepping.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/runtime/src/physicsStepping.ts
 	/** Bounded catch-up for a live renderer. Geometry is evaluated only once. */
 	function prepareLivePhysicsStep(rig, values, previous, state, elapsed, time) {
 		const duration = Math.min(.25, Math.max(1e-4, Number.isFinite(elapsed) ? elapsed : 1 / 60));
@@ -7958,7 +9050,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		};
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/tint.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/tint.ts
 	function validatePartTint(tint) {
 		if (!tint) return [];
 		const issues = [];
@@ -7982,7 +9074,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return Math.round(255 * (s * (1 - opacity) + blended * opacity));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/contourShade.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/contourShade.ts
 	function validateContourShade(shade) {
 		return Boolean(shade && /^#[0-9a-fA-F]{6}$/.test(shade.color) && typeof shade.yawParameter === "string" && shade.yawParameter.length && typeof shade.pitchParameter === "string" && shade.pitchParameter.length && Number.isFinite(shade.maxYaw) && shade.maxYaw > 0 && Number.isFinite(shade.maxPitch) && shade.maxPitch > 0 && Number.isFinite(shade.width) && shade.width > 0 && shade.width <= .5 && Number.isFinite(shade.strength) && shade.strength >= 0 && shade.strength <= 1 && Number.isFinite(shade.axisStrength) && shade.axisStrength >= 0 && shade.axisStrength <= 1 && (shade.profile === void 0 || shade.profile === "cheek") && (shade.farContourFade === void 0 || Number.isFinite(shade.farContourFade) && shade.farContourFade >= 0 && shade.farContourFade <= 1) && (shade.nearContourFade === void 0 || Number.isFinite(shade.nearContourFade) && shade.nearContourFade >= 0 && shade.nearContourFade <= 1) && (shade.upContourFade === void 0 || Number.isFinite(shade.upContourFade) && shade.upContourFade >= 0 && shade.upContourFade <= 1) && (shade.upShadowStrength === void 0 || Number.isFinite(shade.upShadowStrength) && shade.upShadowStrength >= 0 && shade.upShadowStrength <= 1) && (shade.lineWidth === void 0 || Number.isFinite(shade.lineWidth) && shade.lineWidth > 0 && shade.lineWidth <= .1));
 	}
@@ -8206,7 +9298,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return entry.processor.render(values);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e22e2f498dbe1dd4779c0f28f6b3486fbf977c60/packages/core/src/alphaReveal.ts
+	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/alphaReveal.ts
 	function validateAlphaReveal(reveal) {
 		return Boolean(reveal && typeof reveal.parameter === "string" && reveal.parameter.length && Number.isFinite(reveal.closed) && Number.isFinite(reveal.open) && reveal.open > reveal.closed && Number.isFinite(reveal.exponent) && reveal.exponent > 0 && reveal.exponent <= 4 && (reveal.anchor === void 0 || Number.isFinite(reveal.anchor) && reveal.anchor >= 0 && reveal.anchor <= 1));
 	}
@@ -8369,6 +9461,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 	var projectionMs = 0;
 	var validationMs = 0;
 	var meshCache = /* @__PURE__ */ new Map();
+	var redirects = [];
+	var defaultValues = {};
+	var assetsById = /* @__PURE__ */ new Map();
 	function profile() {
 		return JSON.stringify({
 			samples,
@@ -8399,8 +9494,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			ids.add(part.id);
 		}
 		const nextFacial = new FacialController(next);
+		const nextRedirects = trackingRedirects(next);
+		const nextDefaults = defaultParameterValues(next), nextAssets = new Map(next.assets.map((a) => [a.id, a]));
 		rig = next;
 		facial = nextFacial;
+		redirects = nextRedirects;
+		defaultValues = nextDefaults;
+		assetsById = nextAssets;
 		motion = void 0;
 		definitions = new Map(defs.map((d) => [d.id, d]));
 		physics = /* @__PURE__ */ new Map();
@@ -8415,7 +9515,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			parts: rig.parts.length,
 			parameters: defs,
 			stage: rig.stage,
-			rendererReady: false
+			rendererReady: false,
+			trackingRedirects: redirects.map((r) => ({
+				from: r.from,
+				to: r.to,
+				factor: r.factor,
+				viaPendulum: r.viaPendulum
+			}))
 		});
 	}
 	function reset() {
@@ -8494,7 +9600,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		const time = input.time;
 		if (!Number.isFinite(time) || time < 0 || time > 1e9) throw Error("invalid time");
 		if (lastTime !== void 0 && time < lastTime) throw Error("time must be monotonic; reset before seeking");
-		const values = { ...defaultParameterValues(rig) };
+		const values = { ...defaultValues };
 		for (const [id, value] of Object.entries(input.values ?? {})) {
 			const d = definitions.get(id);
 			if (!d || typeof value !== "number" || !Number.isFinite(value) || value < d.min || value > d.max) throw Error("invalid parameter " + id);
@@ -8527,6 +9633,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			...facial.evaluate(values, time * 1e3),
 			...input.overrides
 		};
+		applyTrackingRedirects(composed, redirects, input.physics !== false);
 		const step = input.physics === false ? {
 			dt: 1 / 60,
 			time
@@ -8538,9 +9645,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			physicsDt: step.dt
 		});
 		const t1 = Date.now();
-		const assets = new Map(rig.assets.map((a) => [a.id, a]));
+		const assets = assetsById;
 		const required = renderMode ? renderSelection(rig, frame.parts) : void 0;
-		const parts = [...rig.parts].filter((part) => !required || required.has(part.id)).sort((a, b) => a.drawOrder - b.drawOrder).map((part) => {
+		const selected = rig.parts.filter((part) => !required || required.has(part.id));
+		const parts = (hasDrawOrderGroups(rig.parts) ? [...sortPartsForPaint(rig.parts, selected.filter((part) => part.kind === "image"), frame.values), ...selected.filter((part) => part.kind !== "image")] : sortPartsByDrawOrder(selected, frame.values)).map((part) => {
 			const state = frame.parts.get(part.id);
 			const asset = assets.get(part.assetId);
 			const mesh = asset?.width > 0 && asset?.height > 0 ? cachedMesh(part, asset, frame.values) : void 0;
