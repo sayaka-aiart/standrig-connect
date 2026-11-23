@@ -19,7 +19,7 @@ import { parseMotion,validateMotionParameters,sampleMotion } from '@core/motion'
 import { FacialController } from '@facial-runtime';
 import { prepareLivePhysicsStep } from '@physics-stepping';
 let facial:FacialController|undefined;
-export function facialCatalog(){if(!facial)throw Error('no model');return JSON.stringify(facial.catalog());}
+export function facialCatalog(){if(!facial)throw Error('no model');return JSON.stringify(facial.playbackCatalog());}
 export function facialCommand(json:string,seconds:number){if(!facial)throw Error('no model');facialTime(seconds);return JSON.stringify(facial.command(JSON.parse(json),seconds*1000));}
 export function facialState(seconds:number){if(!facial)throw Error('no model');facialTime(seconds);return JSON.stringify(facial.snapshot(seconds*1000));}
 function facialTime(seconds:number){if(!Number.isFinite(seconds)||seconds<0||seconds>1e9)throw Error('invalid facial time');}

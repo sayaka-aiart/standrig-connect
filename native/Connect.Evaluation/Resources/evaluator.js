@@ -1,6 +1,6 @@
 var StandRigEvaluation = (function(exports) {
 	Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/types.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/types.ts
 	var RIG_SCHEMA_VERSION = "0.1.0";
 	var PARAMETER_IDS = [
 		"ParamAngleX",
@@ -39,7 +39,7 @@ var StandRigEvaluation = (function(exports) {
 		"curve"
 	];
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/packedRig.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/packedRig.ts
 	var defaultFields = [
 		"vertexId",
 		"x",
@@ -126,7 +126,7 @@ var StandRigEvaluation = (function(exports) {
 		});
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/migration.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/migration.ts
 	var CURRENT_RIG_SCHEMA_VERSION = RIG_SCHEMA_VERSION;
 	var RigMigrationError = class extends Error {
 		code;
@@ -254,13 +254,13 @@ var StandRigEvaluation = (function(exports) {
 		};
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/evaluationCache.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/evaluationCache.ts
 	var active;
 	function evaluationCache() {
 		return active;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/bindingPreparation.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/bindingPreparation.ts
 	function prepareRigBindingOrder(rig) {
 		for (const part of rig.parts) {
 			sortBindings(part.bindings);
@@ -320,7 +320,7 @@ var StandRigEvaluation = (function(exports) {
 		return axis;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/pendulumPhysics.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/pendulumPhysics.ts
 	/**
 	* Pendulum physics.
 	*
@@ -666,7 +666,7 @@ var StandRigEvaluation = (function(exports) {
 		return degrees * Math.PI / 180;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/bindings.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/bindings.ts
 	var INTERPOLATION_SET = new Set(PARAMETER_INTERPOLATIONS);
 	function isParameterInterpolation(value) {
 		return typeof value === "string" && INTERPOLATION_SET.has(value);
@@ -727,7 +727,7 @@ var StandRigEvaluation = (function(exports) {
 		return clamped;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/artMeshBlendShape.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/artMeshBlendShape.ts
 	/** Sample a neutral-to-delta ArtMesh shape without changing the neutral mesh. */
 	function sampleArtMeshBlendShape(shape, input) {
 		if (!Number.isFinite(input) || !Number.isFinite(shape.neutralInput) || !Number.isFinite(shape.targetInput) || shape.neutralInput === shape.targetInput) return /* @__PURE__ */ new Map();
@@ -806,7 +806,7 @@ var StandRigEvaluation = (function(exports) {
 		return Array.isArray(parameters) && parameters.length >= 2 && parameters.length <= 8 && parameters.every((p) => typeof p === "string" && p.trim().length > 0) && new Set(parameters).size === parameters.length;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/extendedBlendShape.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/extendedBlendShape.ts
 	var blendWeight = (shape, values) => sampleArtMeshBlendShapeWeight(shape, values[shape.parameter] ?? shape.neutralInput);
 	function applyTransformShapes(pose, shapes, values) {
 		for (const shape of shapes ?? []) {
@@ -858,7 +858,7 @@ var StandRigEvaluation = (function(exports) {
 		return Math.min(1, Math.max(0, base + (glue.blendShapes ?? []).reduce((sum, s) => sum + s.strength * blendWeight(s, values), 0)));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/multiBindings.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/multiBindings.ts
 	/**
 	* Samples a scalar keyform grid over two or more parameters (for example opacity driven by
 	* eye-open, smile and a toggle).
@@ -886,7 +886,7 @@ var StandRigEvaluation = (function(exports) {
 		for (const keyform of keyforms ?? []) {
 			const coordinates = parameters.map((parameter) => keyform?.inputs?.[parameter]);
 			const value = keyform ? valueOf(keyform) : void 0;
-			if (!coordinates.every(finite$4) || !finite$4(value)) continue;
+			if (!coordinates.every(finite$5) || !finite$5(value)) continue;
 			coordinates.forEach((coordinate, axis) => axisValues[axis].add(coordinate));
 			points.set(pointKey(coordinates), value);
 		}
@@ -896,7 +896,7 @@ var StandRigEvaluation = (function(exports) {
 		let level = [];
 		for (let corner = 0; corner < 1 << parameters.length; corner += 1) {
 			const value = points.get(pointKey(spans.map((span, axis) => corner & 1 << axis ? span.high : span.low)));
-			if (!finite$4(value)) return void 0;
+			if (!finite$5(value)) return void 0;
 			level.push(value);
 		}
 		const normalized = normalizeParameterInterpolation(interpolation);
@@ -927,11 +927,11 @@ var StandRigEvaluation = (function(exports) {
 	function pointKey(coordinates) {
 		return coordinates.join("\0");
 	}
-	function finite$4(value) {
+	function finite$5(value) {
 		return typeof value === "number" && Number.isFinite(value);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/warp.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/warp.ts
 	var resolvedPinScopes = /* @__PURE__ */ new WeakMap();
 	function defaultWarpDeformer() {
 		return {
@@ -1216,7 +1216,7 @@ var StandRigEvaluation = (function(exports) {
 		return t * t * (3 - 2 * t);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/sharedWarp.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/sharedWarp.ts
 	/** Compile a snapshot for repeated sampling within one evaluation frame. */
 	function createSharedWarpSampler(field) {
 		const snapshot = {
@@ -1306,7 +1306,7 @@ var StandRigEvaluation = (function(exports) {
 		return Math.min(max, Math.max(min, value));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/deformers.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/deformers.ts
 	/**
 	* `deformerForPart` for many parts of one deformer list: the same answers (the first deformer with the
 	* part's deformerId, else the first that targets the part) from maps built once instead of a scan per part.
@@ -1321,7 +1321,7 @@ var StandRigEvaluation = (function(exports) {
 		return (part) => part.deformerId ? byId.get(part.deformerId) : byTarget.get(part.id);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/parameters.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/parameters.ts
 	function usesCubismParameters(rig) {
 		return rig.metadata?.parameterConvention === "cubism";
 	}
@@ -1635,7 +1635,7 @@ var StandRigEvaluation = (function(exports) {
 		return values;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/partAffine.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/partAffine.ts
 	var FIELDS = [
 		"a",
 		"b",
@@ -1675,7 +1675,7 @@ var StandRigEvaluation = (function(exports) {
 		return result;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/evaluator.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/evaluator.ts
 	/**
 	* The physics state entry that carries the pendulum strands. Keeping them inside the caller's map (rather
 	* than beside it) lets callers copy the map entry by entry between frames, as Connect does for rollback;
@@ -2088,7 +2088,7 @@ var StandRigEvaluation = (function(exports) {
 		return multiplyMatrices(multiplyMatrices(multiplyMatrices(translateMatrix(deformer.origin.x, deformer.origin.y), multiplyMatrices(translateMatrix(pose.x, pose.y), rotateMatrix(pose.rotation))), scaleMatrix(safeScale(pose.scaleX), safeScale(pose.scaleY))), translateMatrix(-deformer.origin.x, -deformer.origin.y));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/artMeshSurface.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/artMeshSurface.ts
 	var GRID = 8;
 	var cache = /* @__PURE__ */ new WeakMap();
 	/** Compose a measured 2D surface with expression/physics geometry. Adding the
@@ -2211,7 +2211,7 @@ var StandRigEvaluation = (function(exports) {
 		return (p.x - a.x - t * x) ** 2 + (p.y - a.y - t * y) ** 2;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/artMeshMulti.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/artMeshMulti.ts
 	function normalizedOffsets(raw) {
 		const seen = /* @__PURE__ */ new Set();
 		let unique = true;
@@ -2246,7 +2246,7 @@ var StandRigEvaluation = (function(exports) {
 		return result;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/denseOffsets.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/denseOffsets.ts
 	/** Snapshot-only numeric offset lanes. Editor calls retain the ordinary mutable path. */
 	function sampleDenseMulti(mesh, binding, values) {
 		const cache = evaluationCache();
@@ -2286,9 +2286,9 @@ var StandRigEvaluation = (function(exports) {
 		return result;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/artMesh.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/artMesh.ts
 	function isValidArtMesh(mesh, width, height) {
-		if (!(width === void 0 || height === void 0 || finite$3(width) && finite$3(height) && width > 0 && height > 0)) return false;
+		if (!(width === void 0 || height === void 0 || finite$4(width) && finite$4(height) && width > 0 && height > 0)) return false;
 		if (mesh && typeof mesh === "object" && evaluationCache()) return evaluationCache().get("valid-artmesh", mesh, () => validateArtMesh(mesh));
 		return validateArtMesh(mesh);
 	}
@@ -2301,10 +2301,10 @@ var StandRigEvaluation = (function(exports) {
 			"outline",
 			"hair-root",
 			"face-feature"
-		].includes(mesh.generator.preset) || !Number.isInteger(mesh.generator.columns) || !Number.isInteger(mesh.generator.rows) || mesh.generator.columns < 1 || mesh.generator.columns > 16 || mesh.generator.rows < 1 || mesh.generator.rows > 16 || !Number.isInteger(mesh.generator.alphaThreshold) || mesh.generator.alphaThreshold < 1 || mesh.generator.alphaThreshold > 255 || !finite$3(mesh.generator.alphaBounds?.left) || !finite$3(mesh.generator.alphaBounds?.top) || !finite$3(mesh.generator.alphaBounds?.width) || !finite$3(mesh.generator.alphaBounds?.height) || mesh.generator.alphaBounds.width <= 0 || mesh.generator.alphaBounds.height <= 0) return false;
+		].includes(mesh.generator.preset) || !Number.isInteger(mesh.generator.columns) || !Number.isInteger(mesh.generator.rows) || mesh.generator.columns < 1 || mesh.generator.columns > 16 || mesh.generator.rows < 1 || mesh.generator.rows > 16 || !Number.isInteger(mesh.generator.alphaThreshold) || mesh.generator.alphaThreshold < 1 || mesh.generator.alphaThreshold > 255 || !finite$4(mesh.generator.alphaBounds?.left) || !finite$4(mesh.generator.alphaBounds?.top) || !finite$4(mesh.generator.alphaBounds?.width) || !finite$4(mesh.generator.alphaBounds?.height) || mesh.generator.alphaBounds.width <= 0 || mesh.generator.alphaBounds.height <= 0) return false;
 		const ids = /* @__PURE__ */ new Set();
 		for (const vertex of mesh.vertices) {
-			if (!vertex || !vertex.id || ids.has(vertex.id) || !finite$3(vertex.x) || !finite$3(vertex.y) || !finite$3(vertex.u) || !finite$3(vertex.v) || vertex.u < 0 || vertex.u > 1 || vertex.v < 0 || vertex.v > 1) return false;
+			if (!vertex || !vertex.id || ids.has(vertex.id) || !finite$4(vertex.x) || !finite$4(vertex.y) || !finite$4(vertex.u) || !finite$4(vertex.v) || vertex.u < 0 || vertex.u > 1 || vertex.v < 0 || vertex.v > 1) return false;
 			ids.add(vertex.id);
 		}
 		for (let index = 0; index < mesh.triangles.length; index += 3) {
@@ -2319,27 +2319,27 @@ var StandRigEvaluation = (function(exports) {
 			if (binding?.composition !== void 0 && binding.composition !== "surface") return false;
 			if (!binding || typeof binding.parameter !== "string" || !binding.parameter.trim() || !Array.isArray(binding.keys)) return false;
 			for (const key of binding.keys) {
-				if (!key || !finite$3(key.input) || !Array.isArray(key.offsets)) return false;
-				for (const offset of key.offsets) if (!offset || !ids.has(offset.vertexId) || !finite$3(offset.x) || !finite$3(offset.y)) return false;
+				if (!key || !finite$4(key.input) || !Array.isArray(key.offsets)) return false;
+				for (const offset of key.offsets) if (!offset || !ids.has(offset.vertexId) || !finite$4(offset.x) || !finite$4(offset.y)) return false;
 			}
 		}
 		for (const binding of mesh.multiBindings ?? []) {
 			if (binding?.composition !== void 0 && binding.composition !== "surface") return false;
 			if (!binding || !validGridParameters(binding.parameters) || !Array.isArray(binding.keyforms)) return false;
 			for (const keyform of binding.keyforms) {
-				if (!keyform || !keyform.inputs || binding.parameters.some((parameter) => !finite$3(keyform.inputs[parameter])) || !Array.isArray(keyform.offsets)) return false;
-				for (const offset of keyform.offsets) if (!offset || !ids.has(offset.vertexId) || !finite$3(offset.x) || !finite$3(offset.y)) return false;
+				if (!keyform || !keyform.inputs || binding.parameters.some((parameter) => !finite$4(keyform.inputs[parameter])) || !Array.isArray(keyform.offsets)) return false;
+				for (const offset of keyform.offsets) if (!offset || !ids.has(offset.vertexId) || !finite$4(offset.x) || !finite$4(offset.y)) return false;
 			}
 		}
 		for (const shape of mesh.blendShapes ?? []) {
-			if (!shape || typeof shape.id !== "string" || !shape.id.trim() || typeof shape.parameter !== "string" || !shape.parameter.trim() || !finite$3(shape.neutralInput) || !finite$3(shape.targetInput) || shape.neutralInput === shape.targetInput || !Array.isArray(shape.offsets)) return false;
-			for (const offset of shape.offsets) if (!offset || !ids.has(offset.vertexId) || !finite$3(offset.x) || !finite$3(offset.y)) return false;
+			if (!shape || typeof shape.id !== "string" || !shape.id.trim() || typeof shape.parameter !== "string" || !shape.parameter.trim() || !finite$4(shape.neutralInput) || !finite$4(shape.targetInput) || shape.neutralInput === shape.targetInput || !Array.isArray(shape.offsets)) return false;
+			for (const offset of shape.offsets) if (!offset || !ids.has(offset.vertexId) || !finite$4(offset.x) || !finite$4(offset.y)) return false;
 		}
 		if (mesh.skinning !== void 0) {
 			if (mesh.skinning.version !== 1 || !Array.isArray(mesh.skinning.joints) || mesh.skinning.joints.length !== 3 || new Set(mesh.skinning.joints.map((joint) => joint.deformerId)).size !== 3 || !mesh.skinning.vertexWeights || typeof mesh.skinning.vertexWeights !== "object") return false;
 			for (const vertex of mesh.vertices) {
 				const weights = mesh.skinning.vertexWeights[vertex.id];
-				if (!Array.isArray(weights) || !weights.length || weights.length > 3 || weights.some((entry) => !entry || typeof entry.deformerId !== "string" || !finite$3(entry.weight) || entry.weight < 0)) return false;
+				if (!Array.isArray(weights) || !weights.length || weights.length > 3 || weights.some((entry) => !entry || typeof entry.deformerId !== "string" || !finite$4(entry.weight) || entry.weight < 0)) return false;
 			}
 		}
 		return true;
@@ -2359,7 +2359,7 @@ var StandRigEvaluation = (function(exports) {
 	function triangleArea(a, b, c) {
 		return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
 	}
-	function finite$3(value) {
+	function finite$4(value) {
 		return typeof value === "number" && Number.isFinite(value);
 	}
 	function prepareNativeArtMeshResolver(part, width, height) {
@@ -2368,7 +2368,7 @@ var StandRigEvaluation = (function(exports) {
 		const keyOffsets = /* @__PURE__ */ new WeakMap();
 		function buildKeyOffsets(key) {
 			const offsets = /* @__PURE__ */ new Map();
-			for (const offset of key.offsets ?? []) if (offset && typeof offset.vertexId === "string" && finite$3(offset.x) && finite$3(offset.y)) offsets.set(offset.vertexId, {
+			for (const offset of key.offsets ?? []) if (offset && typeof offset.vertexId === "string" && finite$4(offset.x) && finite$4(offset.y)) offsets.set(offset.vertexId, {
 				x: offset.x,
 				y: offset.y
 			});
@@ -2444,7 +2444,7 @@ var StandRigEvaluation = (function(exports) {
 		};
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/skinning.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/skinning.ts
 	function applySkinningToVertex(vertex, skinning, transforms) {
 		const weights = skinning.vertexWeights[vertex.id] ?? [];
 		let x = 0;
@@ -2479,7 +2479,7 @@ var StandRigEvaluation = (function(exports) {
 		});
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/drawOrder.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/drawOrder.ts
 	function keyformValue(keyform) {
 		return keyform.value;
 	}
@@ -2556,7 +2556,7 @@ var StandRigEvaluation = (function(exports) {
 		return result;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/tracking.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/tracking.ts
 	var DEFAULT_TRACKING_INPUTS$1 = [
 		{
 			id: "faceYaw",
@@ -3125,12 +3125,12 @@ var StandRigEvaluation = (function(exports) {
 		}
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/glue.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/glue.ts
 	function readRigGlue(rig) {
 		return Array.isArray(rig.glue) ? rig.glue : [];
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/glueWarp.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/glueWarp.ts
 	function resolveGlueWarpForPart(rig, part, state, size, computed, sizeForPart) {
 		const gluePins = gluePinsForPart(rig, part, state, size, computed, sizeForPart);
 		if (!gluePins.length) return state.warp;
@@ -3300,7 +3300,7 @@ var StandRigEvaluation = (function(exports) {
 		return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/sharedWarpProjection.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/sharedWarpProjection.ts
 	/**
 	* Converts a part-local point through its evaluated matrix, applies every
 	* enabled shared field in stable parent-to-child order in stage coordinates,
@@ -3333,7 +3333,7 @@ var StandRigEvaluation = (function(exports) {
 		};
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/glueVertex.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/glueVertex.ts
 	/**
 	* Vertex-level glue ("stitch").
 	*
@@ -3526,7 +3526,7 @@ var StandRigEvaluation = (function(exports) {
 		return Math.min(1, Math.max(0, Number.isFinite(value) ? value : .5));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/mask.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/mask.ts
 	/**
 	* Resolves the closest clip owner from a renderable part up through its part
 	* parents. This lets related interior layers share one alpha-union mask without
@@ -3569,7 +3569,7 @@ var StandRigEvaluation = (function(exports) {
 		return [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))];
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/artPath.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/artPath.ts
 	function readRigArtPaths(part) {
 		return Array.isArray(part.artPaths) ? part.artPaths : [];
 	}
@@ -3712,7 +3712,7 @@ var StandRigEvaluation = (function(exports) {
 		});
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/blendColors.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/blendColors.ts
 	var WHITE = [
 		1,
 		1,
@@ -7619,7 +7619,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		inst.keyType = def.keyType;
 		inst.valueType = def.valueType;
 	});
-	function record(keyType, valueType, params) {
+	function record$1(keyType, valueType, params) {
 		return new ZodRecord({
 			type: "record",
 			keyType,
@@ -8402,31 +8402,31 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 	}
 	//#endregion
 	//#region src/tracking/profile.ts
-	var finite$2 = number().finite();
+	var finite$3 = number().finite();
 	var mapping = strictObject({
 		id: string().min(1),
 		enabled: boolean(),
 		source: _enum(DEFAULT_TRACKING_INPUTS.map((p) => p.id)),
 		parameter: string().min(1),
-		scale: finite$2,
-		offset: finite$2,
-		min: finite$2.optional(),
-		max: finite$2.optional(),
-		smoothing: finite$2.min(0).max(1),
+		scale: finite$3,
+		offset: finite$3,
+		min: finite$3.optional(),
+		max: finite$3.optional(),
+		smoothing: finite$3.min(0).max(1),
 		invert: boolean().optional(),
-		deadZone: finite$2.min(0).max(.99).optional(),
+		deadZone: finite$3.min(0).max(.99).optional(),
 		filter: _enum(["ema", "one-euro"]).optional(),
 		oneEuro: strictObject({
-			minCutoff: finite$2.positive().optional(),
-			beta: finite$2.nonnegative().optional(),
-			derivativeCutoff: finite$2.positive().optional()
+			minCutoff: finite$3.positive().optional(),
+			beta: finite$3.nonnegative().optional(),
+			derivativeCutoff: finite$3.positive().optional()
 		}).optional(),
 		responseCurve: _enum([
 			"linear",
 			"smoothstep",
 			"gamma"
 		]).optional(),
-		responseGamma: finite$2.positive().optional()
+		responseGamma: finite$3.positive().optional()
 	});
 	var profileSchema = strictObject({
 		format: literal("standrig-tracking-profile"),
@@ -8436,15 +8436,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		tracking: strictObject({
 			enabled: boolean(),
 			provider: _enum(["manual", "mediapipe-face-landmarker"]),
-			inputSmoothing: finite$2.min(0).max(1),
+			inputSmoothing: finite$3.min(0).max(1),
 			mappings: array(mapping).min(1).max(256),
-			calibration: record(string(), finite$2).optional(),
+			calibration: record$1(string(), finite$3).optional(),
 			eyeSync: strictObject({
 				enabled: boolean(),
-				winkThreshold: finite$2.min(0).max(1),
+				winkThreshold: finite$3.min(0).max(1),
 				winkCurve: _enum(["hard", "smoothstep"]).optional(),
-				leftGain: finite$2.positive().optional(),
-				rightGain: finite$2.positive().optional()
+				leftGain: finite$3.positive().optional(),
+				rightGain: finite$3.positive().optional()
 			}).optional()
 		})
 	});
@@ -8556,7 +8556,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return JSON.stringify(profile$1, null, 2);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/tint.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/tint.ts
 	function validatePartTint(tint) {
 		if (!tint) return [];
 		const issues = [];
@@ -8580,7 +8580,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return Math.round(255 * (s * (1 - opacity) + blended * opacity));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/contourShade.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/contourShade.ts
 	function validateContourShade(shade) {
 		return Boolean(shade && /^#[0-9a-fA-F]{6}$/.test(shade.color) && typeof shade.yawParameter === "string" && shade.yawParameter.length && typeof shade.pitchParameter === "string" && shade.pitchParameter.length && Number.isFinite(shade.maxYaw) && shade.maxYaw > 0 && Number.isFinite(shade.maxPitch) && shade.maxPitch > 0 && Number.isFinite(shade.width) && shade.width > 0 && shade.width <= .5 && Number.isFinite(shade.strength) && shade.strength >= 0 && shade.strength <= 1 && Number.isFinite(shade.axisStrength) && shade.axisStrength >= 0 && shade.axisStrength <= 1 && (shade.profile === void 0 || shade.profile === "cheek") && (shade.farContourFade === void 0 || Number.isFinite(shade.farContourFade) && shade.farContourFade >= 0 && shade.farContourFade <= 1) && (shade.nearContourFade === void 0 || Number.isFinite(shade.nearContourFade) && shade.nearContourFade >= 0 && shade.nearContourFade <= 1) && (shade.upContourFade === void 0 || Number.isFinite(shade.upContourFade) && shade.upContourFade >= 0 && shade.upContourFade <= 1) && (shade.upShadowStrength === void 0 || Number.isFinite(shade.upShadowStrength) && shade.upShadowStrength >= 0 && shade.upShadowStrength <= 1) && (shade.lineWidth === void 0 || Number.isFinite(shade.lineWidth) && shade.lineWidth > 0 && shade.lineWidth <= .1));
 	}
@@ -8804,7 +8804,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return entry.processor.render(values, pitchUp);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/alphaReveal.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/alphaReveal.ts
 	function validateAlphaReveal(reveal) {
 		return Boolean(reveal && typeof reveal.parameter === "string" && reveal.parameter.length && Number.isFinite(reveal.closed) && Number.isFinite(reveal.open) && reveal.open > reveal.closed && Number.isFinite(reveal.exponent) && reveal.exponent > 0 && reveal.exponent <= 4 && (reveal.anchor === void 0 || Number.isFinite(reveal.anchor) && reveal.anchor >= 0 && reveal.anchor <= 1));
 	}
@@ -9035,11 +9035,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/motion.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/motion.ts
 	function object$1(value, keys) {
 		if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((k) => !keys.includes(k))) throw Error("invalid motion object/unknown field");
 	}
-	var finite$1 = (v) => typeof v === "number" && Number.isFinite(v);
+	var finite$2 = (v) => typeof v === "number" && Number.isFinite(v);
 	function parseMotion(value) {
 		object$1(value, [
 			"format",
@@ -9049,7 +9049,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"tracks"
 		]);
 		if (value.format !== "standrig-motion" || value.version !== 1) throw Error("unsupported motion format/version; Live2D conversion is not installed");
-		if (typeof value.name !== "string" || !value.name.trim() || value.name.length > 160 || !finite$1(value.duration) || value.duration <= 0 || value.duration > 3600) throw Error("invalid motion name/duration");
+		if (typeof value.name !== "string" || !value.name.trim() || value.name.length > 160 || !finite$2(value.duration) || value.duration <= 0 || value.duration > 3600) throw Error("invalid motion name/duration");
 		if (!Array.isArray(value.tracks) || !value.tracks.length || value.tracks.length > 256) throw Error("motion requires 1..256 tracks");
 		const ids = /* @__PURE__ */ new Set();
 		let total = 0;
@@ -9065,7 +9065,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					"value",
 					"segment"
 				]);
-				if (!finite$1(key.time) || !finite$1(key.value) || key.time < 0 || key.time > value.duration || i && key.time <= track.keys[i - 1].time) throw Error("motion keys must have finite values and strictly increasing times");
+				if (!finite$2(key.time) || !finite$2(key.value) || key.time < 0 || key.time > value.duration || i && key.time <= track.keys[i - 1].time) throw Error("motion keys must have finite values and strictly increasing times");
 				if (key.segment !== void 0) {
 					object$1(key.segment, [
 						"kind",
@@ -9083,7 +9083,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					if (s.kind === "bezier") {
 						for (const c of [s.control1, s.control2]) {
 							object$1(c, ["time", "value"]);
-							if (!finite$1(c.time) || !finite$1(c.value)) throw Error("invalid bezier controls");
+							if (!finite$2(c.time) || !finite$2(c.value)) throw Error("invalid bezier controls");
 						}
 						const a = s.control1, b = s.control2;
 						if (a.time < key.time || b.time < a.time || b.time > track.keys[i + 1].time) throw Error("bezier control times must be monotone within the segment");
@@ -9139,8 +9139,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return Object.fromEntries(clip.tracks.map((t) => [t.parameter, sampleMotionTrack(t, time)]));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/facial.ts
-	var jsonClone$1 = (value) => JSON.parse(JSON.stringify(value));
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/facialTypes.ts
 	var VISEME_IDS = [
 		"A",
 		"I",
@@ -9149,6 +9148,178 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		"O",
 		"Silence"
 	];
+	//#endregion
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/motionSync.ts
+	var MAX_PROFILES = 32;
+	var MAX_CHANNELS = 64;
+	function record(value, keys, label) {
+		if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !keys.includes(key))) throw Error(`Invalid MotionSync ${label}`);
+		return value;
+	}
+	function rows(value, max, label) {
+		if (!Array.isArray(value) || !value.length || value.length > max) throw Error(`MotionSync ${label} requires 1–${max} entries`);
+		return value;
+	}
+	function labelText(value, label) {
+		if (typeof value !== "string" || !value.trim() || value.length > 160) throw Error(`Invalid MotionSync ${label}`);
+		return value;
+	}
+	function finite$1(value, label) {
+		if (typeof value !== "number" || !Number.isFinite(value)) throw Error(`Invalid MotionSync ${label}`);
+		return value;
+	}
+	function unique(map, key, value, label) {
+		if (map.has(key)) throw Error(`Duplicate MotionSync ${label}: ${key}`);
+		map.set(key, value);
+	}
+	function visemeId(value) {
+		if (!VISEME_IDS.includes(value)) throw Error(`Unsupported MotionSync audio ID: ${value}`);
+		return value;
+	}
+	function parseSetting(value) {
+		const setting = record(value, [
+			"Id",
+			"AnalysisType",
+			"UseCase",
+			"CubismParameters",
+			"AudioParameters",
+			"Mappings",
+			"PostProcessing"
+		], "setting");
+		labelText(setting.Id, "setting ID");
+		if (setting.AnalysisType !== "CRI" || setting.UseCase !== "Mouth") throw Error("MotionSync currently supports CRI mouth settings");
+		const channels = /* @__PURE__ */ new Map();
+		for (const row of rows(setting.CubismParameters, MAX_CHANNELS, "Cubism parameters")) {
+			const p = record(row, [
+				"Id",
+				"Name",
+				"Min",
+				"Max",
+				"Damper",
+				"Smooth"
+			], "Cubism parameter");
+			const id = labelText(p.Id, "parameter ID");
+			labelText(p.Name, "parameter name");
+			const min = finite$1(p.Min, "Min"), max = finite$1(p.Max, "Max");
+			if (min > max) throw Error(`Invalid MotionSync range: ${id}`);
+			finite$1(p.Damper, "Damper");
+			finite$1(p.Smooth, "Smooth");
+			unique(channels, id, {
+				min,
+				max
+			}, "parameter");
+		}
+		const audio = /* @__PURE__ */ new Map();
+		for (const row of rows(setting.AudioParameters, VISEME_IDS.length, "audio parameters")) {
+			const p = record(row, [
+				"Id",
+				"Name",
+				"Min",
+				"Max",
+				"Scale",
+				"Enabled"
+			], "audio parameter");
+			const id = visemeId(p.Id);
+			labelText(p.Name, "audio name");
+			if (finite$1(p.Min, "Min") > finite$1(p.Max, "Max") || typeof p.Enabled !== "boolean") throw Error(`Invalid MotionSync audio settings: ${id}`);
+			finite$1(p.Scale, "Scale");
+			unique(audio, id, p.Enabled, "audio ID");
+		}
+		const shapes = /* @__PURE__ */ new Map();
+		for (const row of rows(setting.Mappings, VISEME_IDS.length, "mappings")) {
+			const mapping = record(row, [
+				"Id",
+				"Type",
+				"Targets"
+			], "mapping");
+			const id = visemeId(mapping.Id);
+			if (mapping.Type !== "Shape" || !audio.has(id) || !Array.isArray(mapping.Targets) || mapping.Targets.length > MAX_CHANNELS) throw Error(`Invalid MotionSync Shape: ${id}`);
+			const ids = /* @__PURE__ */ new Set();
+			for (const row of mapping.Targets) {
+				const target = record(row, ["Id", "Value"], "target");
+				const id = labelText(target.Id, "target ID"), range = channels.get(id);
+				const v = finite$1(target.Value, "target value");
+				if (!range || v < range.min || v > range.max || ids.has(id)) throw Error(`Invalid MotionSync target or value outside file range: ${id}`);
+				ids.add(id);
+			}
+			unique(shapes, id, ids, "Shape");
+		}
+		let common;
+		for (const [id, enabled] of audio) {
+			if (!enabled) continue;
+			const ids = shapes.get(id);
+			if (!ids?.size) throw Error(`Missing MotionSync Shape targets: ${id}`);
+			if (common && (common.size !== ids.size || [...ids].some((id) => !common.has(id)))) throw Error("Enabled MotionSync shapes must use the same parameter IDs");
+			common = ids;
+		}
+		if (!common) throw Error("MotionSync requires at least one enabled shape");
+		const post = record(setting.PostProcessing, [
+			"BlendRatio",
+			"Smoothing",
+			"SampleRate"
+		], "PostProcessing");
+		finite$1(post.BlendRatio, "BlendRatio");
+		finite$1(post.Smoothing, "Smoothing");
+		finite$1(post.SampleRate, "SampleRate");
+		return setting;
+	}
+	function modelParameters(setting, rig) {
+		const definitions = new Map(parameterDefinitionsForRig$1(rig).map((p) => [p.id, p]));
+		const parameters = /* @__PURE__ */ new Map();
+		const usedIds = /* @__PURE__ */ new Set();
+		for (const { Id } of setting.CubismParameters) {
+			const alias = Id === "ParamMouthOpenY" ? "ParamMouthOpen" : Id === "ParamMouthOpen" ? "ParamMouthOpenY" : Id;
+			const parameter = definitions.get(Id) ?? definitions.get(alias);
+			if (!parameter) throw Error(`Unknown MotionSync model parameter: ${Id}`);
+			if (usedIds.has(parameter.id)) throw Error(`Duplicate MotionSync model parameter: ${parameter.id}`);
+			usedIds.add(parameter.id);
+			parameters.set(Id, parameter);
+		}
+		return parameters;
+	}
+	function visemeBank(setting, rig) {
+		const parameters = modelParameters(setting, rig);
+		const enabled = new Set(setting.AudioParameters.filter((p) => p.Enabled).map((p) => p.Id));
+		return {
+			mode: "pose",
+			presets: setting.Mappings.filter((m) => enabled.has(m.Id)).map((mapping) => ({
+				id: mapping.Id,
+				values: Object.fromEntries(mapping.Targets.map((target) => {
+					const p = parameters.get(target.Id);
+					if (target.Value < p.min || target.Value > p.max) throw Error(`MotionSync target outside model range: ${p.id} (${target.Value})`);
+					return [p.id, target.Value];
+				}))
+			}))
+		};
+	}
+	function validateMotionSyncProfiles(value, rig) {
+		const data = record(value, ["profiles", "selectedId"], "profiles");
+		const ids = /* @__PURE__ */ new Set();
+		for (const row of rows(data.profiles, MAX_PROFILES, "profiles")) {
+			const profile = record(row, [
+				"id",
+				"name",
+				"setting"
+			], "profile");
+			const id = labelText(profile.id, "profile ID");
+			if (ids.has(id)) throw Error(`Duplicate MotionSync profile: ${id}`);
+			ids.add(id);
+			labelText(profile.name, "profile name");
+			visemeBank(parseSetting(profile.setting), rig);
+		}
+		if (data.selectedId !== void 0 && !ids.has(labelText(data.selectedId, "selected profile ID"))) throw Error("Unknown selected MotionSync profile");
+	}
+	function selectedMotionSyncProfile(data) {
+		return data?.profiles.find((profile) => profile.id === data.selectedId);
+	}
+	/** The saved manual bank remains available even when a MotionSync profile is selected. */
+	function activeVisemeBank(presets, rig) {
+		const profile = selectedMotionSyncProfile(presets?.motionSync);
+		return profile ? visemeBank(profile.setting, rig) : presets?.visemes;
+	}
+	//#endregion
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/core/src/facial.ts
+	var jsonClone$1 = (value) => JSON.parse(JSON.stringify(value));
 	function object(value, allowed) {
 		if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((k) => !allowed.includes(k))) throw Error("invalid facial object/unknown field");
 	}
@@ -9204,7 +9375,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		object(value, [
 			"version",
 			"expressions",
-			"visemes"
+			"visemes",
+			"motionSync"
 		]);
 		if (value.version !== 1 || !Array.isArray(value.expressions) || value.expressions.length > 128) throw Error("invalid facial catalog version/count");
 		const defs = parameterDefinitionsForRig$1(rig), definitionMap = new Map(defs.map((p) => [p.id, p])), seen = /* @__PURE__ */ new Set();
@@ -9251,16 +9423,18 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				if (preset.id === "Silence" && bank.mode === "blend-shape" && entries.some(([, v]) => v !== 0)) throw Error("blend-shape Silence must have zero weights");
 			}
 		}
+		if (value.motionSync !== void 0) validateMotionSyncProfiles(value.motionSync, rig);
 		return jsonClone$1(value);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/runtime/src/facial.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/runtime/src/facial.ts
 	var jsonClone = (value) => JSON.parse(JSON.stringify(value));
 	var weight = (f, now) => f.duration === 0 ? f.to : f.from + (f.to - f.from) * Math.max(0, Math.min(1, (now - f.start) / f.duration));
 	var finiteSaturation = (v) => Math.max(-Number.MAX_VALUE, Math.min(Number.MAX_VALUE, v));
 	/** Re-evaluates against the live base each frame; never accumulates facial values into it. */
 	var FacialController = class {
 		presets;
+		visemeBank;
 		definitions;
 		byId;
 		expressions = /* @__PURE__ */ new Map();
@@ -9271,11 +9445,20 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				version: 1,
 				expressions: []
 			} : parseFacialPresets(rig.facialPresets, rig);
+			this.visemeBank = activeVisemeBank(this.presets, rig);
 			this.definitions = parameterDefinitionsForRig$1(rig);
 			this.byId = new Map(this.definitions.map((p) => [p.id, p]));
 		}
 		catalog() {
 			return jsonClone(this.presets);
+		}
+		/** For playback clients that discover the currently playable entries through visemes. */
+		playbackCatalog() {
+			const { motionSync: _motionSync, ...catalog } = this.presets;
+			return jsonClone({
+				...catalog,
+				visemes: this.visemeBank
+			});
 		}
 		clock(now) {
 			if (!Number.isFinite(now)) throw Error("facial clock must be finite");
@@ -9354,7 +9537,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					this.expressionId = strength ? entry.id : null;
 				}
 			} else if (request.action === "viseme" || request.action === "visemes") {
-				const bank = this.presets.visemes;
+				const bank = this.visemeBank;
 				if (!bank) throw Error("no viseme bank");
 				const values = request.action === "viseme" ? { [request.id]: this.strength(request.strength) } : request.weights;
 				if (!values || typeof values !== "object" || Array.isArray(values) || Object.keys(values).some((k) => !VISEME_IDS.includes(k))) throw Error("invalid viseme weights");
@@ -9376,7 +9559,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					this.transition(this.expressions, /* @__PURE__ */ new Map(), now, 0, outExpression, request.immediate);
 					this.expressionId = null;
 				}
-				if (request.layer !== "expression") this.transition(this.visemes, /* @__PURE__ */ new Map(), now, 0, () => this.presets.visemes?.fadeOutTime ?? .08, request.immediate);
+				if (request.layer !== "expression") this.transition(this.visemes, /* @__PURE__ */ new Map(), now, 0, () => this.visemeBank?.fadeOutTime ?? .08, request.immediate);
 			} else throw Error("unknown facial command");
 			return this.snapshot(now);
 		}
@@ -9384,7 +9567,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		external(patch, now) {
 			this.snapshot(now);
 			const expressionTouched = this.presets.expressions.some((e) => this.expressions.has(e.id) && e.document.Parameters.some((p) => Object.hasOwn(patch, p.Id)));
-			const visemeTouched = this.visemes.size > 0 && this.presets.visemes?.presets.some((p) => Object.keys(p.values).some((id) => Object.hasOwn(patch, id)));
+			const visemeTouched = this.visemes.size > 0 && this.visemeBank?.presets.some((p) => Object.keys(p.values).some((id) => Object.hasOwn(patch, id)));
 			if (expressionTouched) {
 				this.expressions.clear();
 				this.expressionId = null;
@@ -9424,7 +9607,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				if (c.overwriteWeight) value = (c.overwriteWeight < 1 ? value * (1 - c.overwriteWeight) : 0) + c.overwrite / Math.max(1, c.overwriteWeight);
 				result[id] = Math.max(p.min, Math.min(p.max, value));
 			}
-			const bank = this.presets.visemes;
+			const bank = this.visemeBank;
 			if (bank) {
 				const weights = state.visemeWeights, total = Object.values(weights).reduce((sum, v) => sum + (v ?? 0), 0), scale = 1 / Math.max(1, total), sumWeight = Math.min(1, total);
 				if (total > 0) for (const id of Object.keys(bank.presets[0]?.values ?? {})) {
@@ -9443,7 +9626,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}
 	};
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/runtime/src/physicsStepping.ts
+	//#region workspace/vendor/standrig-evaluation/f046befc5dc3dd2f181a81d1a301465d299f378f/packages/runtime/src/physicsStepping.ts
 	/** Bounded catch-up for a live renderer. Geometry is evaluated only once. */
 	function prepareLivePhysicsStep(rig, values, previous, state, elapsed, time) {
 		const duration = Math.min(.25, Math.max(1e-4, Number.isFinite(elapsed) ? elapsed : 1 / 60));
@@ -9471,7 +9654,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 	var facial;
 	function facialCatalog() {
 		if (!facial) throw Error("no model");
-		return JSON.stringify(facial.catalog());
+		return JSON.stringify(facial.playbackCatalog());
 	}
 	function facialCommand(json, seconds) {
 		if (!facial) throw Error("no model");

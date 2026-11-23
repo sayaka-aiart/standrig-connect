@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using StandRig.Connect.Evaluation;
 internal static class FacialChecks
 {
@@ -34,6 +35,65 @@ internal static class FacialChecks
         Console.WriteLine("PASS native V8 facial catalog, fades, live blink, mixture, manual priority, clear, reset/reload, invalid atomicity and thread ownership");
         Console.WriteLine("PASS facial slot catalog roundtrip without transient selection");
         CubismMouthPad(e);
+        MotionSyncMouth(e, source);
+    }
+
+    private static void MotionSyncMouth(ModelEvaluator evaluator, string source)
+    {
+        // The persisted model retains its manual A shape while playback uses the selected profile.
+        var rig = JsonNode.Parse(source)!.AsObject();
+        var facial = rig["facialPresets"]!.AsObject();
+        var manual = facial["visemes"]!.DeepClone();
+        string[] ids = ["Silence", "A", "I", "U", "E", "O"];
+        double[] openings = [0, .72, .28, .36, .63, .85];
+        facial["motionSync"] = JsonSerializer.SerializeToNode(new
+        {
+            selectedId = "cubism-mouth",
+            profiles = new[] {
+                new {
+                    id = "cubism-mouth", name = "MotionSync",
+                    setting = new {
+                        Id = "MotionSyncSetting", AnalysisType = "CRI", UseCase = "Mouth",
+                        CubismParameters = new[] {
+                            new { Id = "ParamMouthOpenY", Name = "Mouth", Min = 0, Max = 1, Damper = 0, Smooth = 25 },
+                            new { Id = "ParamMouthForm", Name = "Form", Min = -1, Max = 1, Damper = 0, Smooth = 25 }
+                        },
+                        AudioParameters = ids.Select(id => new { Id = id, Name = id, Min = 0, Max = 1, Scale = 2, Enabled = true }),
+                        Mappings = ids.Select((id, i) => new {
+                            Type = "Shape", Id = id, Targets = new[] {
+                                new { Id = "ParamMouthOpenY", Value = openings[i] },
+                                new { Id = "ParamMouthForm", Value = -.1 * i }
+                            }
+                        }),
+                        PostProcessing = new { BlendRatio = .5, Smoothing = 60, SampleRate = 60 }
+                    }
+                }
+            }
+        });
+        var bundle = new JsonObject { ["format"] = "standrig-bundle", ["version"] = 1, ["name"] = "MotionSync mouth", ["rig"] = rig };
+        evaluator.Load(bundle.ToJsonString());
+        using var catalog = JsonDocument.Parse(evaluator.FacialCatalog());
+        var poses = catalog.RootElement.GetProperty("visemes").GetProperty("presets");
+        if (poses.GetArrayLength() != 6 || poses[1].GetProperty("values").GetProperty("ParamMouthOpen").GetDouble() != .72)
+            throw new Exception("Connect did not discover the selected MotionSync mouth bank");
+
+        double Evaluate(string request, double start, double time)
+        {
+            evaluator.FacialCommand(request, start);
+            using var frame = JsonDocument.Parse(evaluator.Evaluate(JsonSerializer.Serialize(new { time, physics = false })));
+            return frame.RootElement.GetProperty("values").GetProperty("ParamMouthOpen").GetDouble();
+        }
+        if (Evaluate("""{"action":"viseme","id":"A"}""", 0, .1) != .72)
+            throw new Exception("Connect manual preview did not use imported A");
+        if (Math.Abs(Evaluate("""{"action":"visemes","weights":{"A":0.5,"I":0.5}}""", .1, .2) - .5) > 1e-12)
+            throw new Exception("Connect audio mixture did not use imported A and I");
+
+        facial["motionSync"]!.AsObject().Remove("selectedId");
+        evaluator.Load(bundle.ToJsonString());
+        using var fallback = JsonDocument.Parse(evaluator.FacialCatalog());
+        if (!JsonNode.DeepEquals(JsonNode.Parse(fallback.RootElement.GetProperty("visemes").GetRawText()), manual))
+            throw new Exception("Connect did not restore the original manual bank");
+        Console.WriteLine("PASS MotionSync bundle selection, imported manual and weighted playback, and original registrations");
     }
 
     private static void CubismMouthPad(ModelEvaluator evaluator)
