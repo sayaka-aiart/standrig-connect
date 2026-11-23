@@ -1,6 +1,6 @@
 var StandRigEvaluation = (function(exports) {
 	Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/types.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/types.ts
 	var RIG_SCHEMA_VERSION = "0.1.0";
 	var PARAMETER_IDS = [
 		"ParamAngleX",
@@ -39,7 +39,7 @@ var StandRigEvaluation = (function(exports) {
 		"curve"
 	];
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/packedRig.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/packedRig.ts
 	var defaultFields = [
 		"vertexId",
 		"x",
@@ -126,7 +126,7 @@ var StandRigEvaluation = (function(exports) {
 		});
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/migration.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/migration.ts
 	var CURRENT_RIG_SCHEMA_VERSION = RIG_SCHEMA_VERSION;
 	var RigMigrationError = class extends Error {
 		code;
@@ -254,13 +254,13 @@ var StandRigEvaluation = (function(exports) {
 		};
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/evaluationCache.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/evaluationCache.ts
 	var active;
 	function evaluationCache() {
 		return active;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/bindingPreparation.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/bindingPreparation.ts
 	function prepareRigBindingOrder(rig) {
 		for (const part of rig.parts) {
 			sortBindings(part.bindings);
@@ -320,7 +320,7 @@ var StandRigEvaluation = (function(exports) {
 		return axis;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/pendulumPhysics.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/pendulumPhysics.ts
 	/**
 	* Pendulum physics.
 	*
@@ -666,7 +666,7 @@ var StandRigEvaluation = (function(exports) {
 		return degrees * Math.PI / 180;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/bindings.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/bindings.ts
 	var INTERPOLATION_SET = new Set(PARAMETER_INTERPOLATIONS);
 	function isParameterInterpolation(value) {
 		return typeof value === "string" && INTERPOLATION_SET.has(value);
@@ -727,7 +727,7 @@ var StandRigEvaluation = (function(exports) {
 		return clamped;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/artMeshBlendShape.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/artMeshBlendShape.ts
 	/** Sample a neutral-to-delta ArtMesh shape without changing the neutral mesh. */
 	function sampleArtMeshBlendShape(shape, input) {
 		if (!Number.isFinite(input) || !Number.isFinite(shape.neutralInput) || !Number.isFinite(shape.targetInput) || shape.neutralInput === shape.targetInput) return /* @__PURE__ */ new Map();
@@ -806,7 +806,7 @@ var StandRigEvaluation = (function(exports) {
 		return Array.isArray(parameters) && parameters.length >= 2 && parameters.length <= 8 && parameters.every((p) => typeof p === "string" && p.trim().length > 0) && new Set(parameters).size === parameters.length;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/extendedBlendShape.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/extendedBlendShape.ts
 	var blendWeight = (shape, values) => sampleArtMeshBlendShapeWeight(shape, values[shape.parameter] ?? shape.neutralInput);
 	function applyTransformShapes(pose, shapes, values) {
 		for (const shape of shapes ?? []) {
@@ -858,7 +858,7 @@ var StandRigEvaluation = (function(exports) {
 		return Math.min(1, Math.max(0, base + (glue.blendShapes ?? []).reduce((sum, s) => sum + s.strength * blendWeight(s, values), 0)));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/multiBindings.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/multiBindings.ts
 	/**
 	* Samples a scalar keyform grid over two or more parameters (for example opacity driven by
 	* eye-open, smile and a toggle).
@@ -931,7 +931,7 @@ var StandRigEvaluation = (function(exports) {
 		return typeof value === "number" && Number.isFinite(value);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/warp.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/warp.ts
 	var resolvedPinScopes = /* @__PURE__ */ new WeakMap();
 	function defaultWarpDeformer() {
 		return {
@@ -1216,7 +1216,7 @@ var StandRigEvaluation = (function(exports) {
 		return t * t * (3 - 2 * t);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/sharedWarp.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/sharedWarp.ts
 	/** Compile a snapshot for repeated sampling within one evaluation frame. */
 	function createSharedWarpSampler(field) {
 		const snapshot = {
@@ -1306,7 +1306,7 @@ var StandRigEvaluation = (function(exports) {
 		return Math.min(max, Math.max(min, value));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/deformers.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/deformers.ts
 	/**
 	* `deformerForPart` for many parts of one deformer list: the same answers (the first deformer with the
 	* part's deformerId, else the first that targets the part) from maps built once instead of a scan per part.
@@ -1319,6 +1319,11 @@ var StandRigEvaluation = (function(exports) {
 			for (const partId of deformer.targetPartIds ?? []) if (!byTarget.has(partId)) byTarget.set(partId, deformer);
 		}
 		return (part) => part.deformerId ? byId.get(part.deformerId) : byTarget.get(part.id);
+	}
+	//#endregion
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/parameters.ts
+	function usesCubismParameters(rig) {
+		return rig.metadata?.parameterConvention === "cubism";
 	}
 	var DEFAULT_PARAMETERS = [
 		{
@@ -1594,9 +1599,30 @@ var StandRigEvaluation = (function(exports) {
 			}
 		]
 	];
+	var CUBISM_PARAMETERS = DEFAULT_PARAMETERS.map((parameter) => {
+		switch (parameter.id) {
+			case "ParamBodyAngleX":
+			case "ParamBodyAngleY": return {
+				...parameter,
+				min: -10,
+				max: 10,
+				step: .1
+			};
+			case "ParamMouthOpen": return {
+				...parameter,
+				id: "ParamMouthOpenY"
+			};
+			case "ParamMouthSmile": return {
+				...parameter,
+				id: "ParamMouthRound",
+				label: "Mouth Round"
+			};
+			default: return parameter;
+		}
+	});
 	function parameterDefinitionsForRig$1(rig) {
 		const merged = /* @__PURE__ */ new Map();
-		for (const parameter of DEFAULT_PARAMETERS) merged.set(parameter.id, parameter);
+		for (const parameter of usesCubismParameters(rig) ? CUBISM_PARAMETERS : DEFAULT_PARAMETERS) merged.set(parameter.id, parameter);
 		for (const parameter of rig.parameters ?? []) merged.set(parameter.id, {
 			...merged.get(parameter.id),
 			...parameter
@@ -1609,7 +1635,7 @@ var StandRigEvaluation = (function(exports) {
 		return values;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/partAffine.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/partAffine.ts
 	var FIELDS = [
 		"a",
 		"b",
@@ -1649,7 +1675,7 @@ var StandRigEvaluation = (function(exports) {
 		return result;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/evaluator.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/evaluator.ts
 	/**
 	* The physics state entry that carries the pendulum strands. Keeping them inside the caller's map (rather
 	* than beside it) lets callers copy the map entry by entry between frames, as Connect does for rollback;
@@ -2062,7 +2088,7 @@ var StandRigEvaluation = (function(exports) {
 		return multiplyMatrices(multiplyMatrices(multiplyMatrices(translateMatrix(deformer.origin.x, deformer.origin.y), multiplyMatrices(translateMatrix(pose.x, pose.y), rotateMatrix(pose.rotation))), scaleMatrix(safeScale(pose.scaleX), safeScale(pose.scaleY))), translateMatrix(-deformer.origin.x, -deformer.origin.y));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/artMeshSurface.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/artMeshSurface.ts
 	var GRID = 8;
 	var cache = /* @__PURE__ */ new WeakMap();
 	/** Compose a measured 2D surface with expression/physics geometry. Adding the
@@ -2185,7 +2211,7 @@ var StandRigEvaluation = (function(exports) {
 		return (p.x - a.x - t * x) ** 2 + (p.y - a.y - t * y) ** 2;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/artMeshMulti.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/artMeshMulti.ts
 	function normalizedOffsets(raw) {
 		const seen = /* @__PURE__ */ new Set();
 		let unique = true;
@@ -2220,7 +2246,7 @@ var StandRigEvaluation = (function(exports) {
 		return result;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/denseOffsets.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/denseOffsets.ts
 	/** Snapshot-only numeric offset lanes. Editor calls retain the ordinary mutable path. */
 	function sampleDenseMulti(mesh, binding, values) {
 		const cache = evaluationCache();
@@ -2260,7 +2286,7 @@ var StandRigEvaluation = (function(exports) {
 		return result;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/artMesh.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/artMesh.ts
 	function isValidArtMesh(mesh, width, height) {
 		if (!(width === void 0 || height === void 0 || finite$3(width) && finite$3(height) && width > 0 && height > 0)) return false;
 		if (mesh && typeof mesh === "object" && evaluationCache()) return evaluationCache().get("valid-artmesh", mesh, () => validateArtMesh(mesh));
@@ -2418,7 +2444,7 @@ var StandRigEvaluation = (function(exports) {
 		};
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/skinning.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/skinning.ts
 	function applySkinningToVertex(vertex, skinning, transforms) {
 		const weights = skinning.vertexWeights[vertex.id] ?? [];
 		let x = 0;
@@ -2453,7 +2479,7 @@ var StandRigEvaluation = (function(exports) {
 		});
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/drawOrder.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/drawOrder.ts
 	function keyformValue(keyform) {
 		return keyform.value;
 	}
@@ -2530,7 +2556,7 @@ var StandRigEvaluation = (function(exports) {
 		return result;
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/tracking.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/tracking.ts
 	var DEFAULT_TRACKING_INPUTS$1 = [
 		{
 			id: "faceYaw",
@@ -2866,6 +2892,30 @@ var StandRigEvaluation = (function(exports) {
 	*/
 	function defaultMappingForRig(spec, context) {
 		const { rig, authored, ranges, claimed } = context;
+		if (usesCubismParameters(rig)) {
+			if (spec.parameter === "ParamMouthOpen") spec = {
+				...spec,
+				parameter: "ParamMouthOpenY"
+			};
+			if (spec.parameter === "ParamMouthForm") spec = {
+				...spec,
+				parameter: "ParamMouthRound"
+			};
+			if (spec.parameter === "ParamMouthSmile") spec = {
+				...spec,
+				parameter: "ParamMouthForm"
+			};
+			if (spec.parameter === "ParamBodyAngleX" || spec.parameter === "ParamBodyAngleY") {
+				const range = ranges.get(spec.parameter);
+				spec = {
+					...spec,
+					scale: spec.scale * (range.max - range.min) / 60,
+					min: range.min,
+					max: range.max,
+					offset: range.default
+				};
+			}
+		}
 		let parameter = spec.parameter;
 		const alternateName = ALTERNATE_PARAMETER_NAMES[parameter];
 		if (alternateName && !authored.has(parameter) && authored.has(alternateName)) parameter = alternateName;
@@ -3075,12 +3125,12 @@ var StandRigEvaluation = (function(exports) {
 		}
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/glue.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/glue.ts
 	function readRigGlue(rig) {
 		return Array.isArray(rig.glue) ? rig.glue : [];
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/glueWarp.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/glueWarp.ts
 	function resolveGlueWarpForPart(rig, part, state, size, computed, sizeForPart) {
 		const gluePins = gluePinsForPart(rig, part, state, size, computed, sizeForPart);
 		if (!gluePins.length) return state.warp;
@@ -3250,7 +3300,7 @@ var StandRigEvaluation = (function(exports) {
 		return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/sharedWarpProjection.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/sharedWarpProjection.ts
 	/**
 	* Converts a part-local point through its evaluated matrix, applies every
 	* enabled shared field in stable parent-to-child order in stage coordinates,
@@ -3283,7 +3333,7 @@ var StandRigEvaluation = (function(exports) {
 		};
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/glueVertex.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/glueVertex.ts
 	/**
 	* Vertex-level glue ("stitch").
 	*
@@ -3476,7 +3526,7 @@ var StandRigEvaluation = (function(exports) {
 		return Math.min(1, Math.max(0, Number.isFinite(value) ? value : .5));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/mask.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/mask.ts
 	/**
 	* Resolves the closest clip owner from a renderable part up through its part
 	* parents. This lets related interior layers share one alpha-union mask without
@@ -3519,7 +3569,7 @@ var StandRigEvaluation = (function(exports) {
 		return [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))];
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/artPath.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/artPath.ts
 	function readRigArtPaths(part) {
 		return Array.isArray(part.artPaths) ? part.artPaths : [];
 	}
@@ -3662,7 +3712,7 @@ var StandRigEvaluation = (function(exports) {
 		});
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/blendColors.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/blendColors.ts
 	var WHITE = [
 		1,
 		1,
@@ -8506,6 +8556,373 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return JSON.stringify(profile$1, null, 2);
 	}
 	//#endregion
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/tint.ts
+	function validatePartTint(tint) {
+		if (!tint) return [];
+		const issues = [];
+		if (tint.mode !== "multiply" && tint.mode !== "screen") issues.push("tint-mode-invalid");
+		if (typeof tint.color !== "string" || !/^#[0-9a-fA-F]{6}$/.test(tint.color)) issues.push("tint-color-invalid");
+		if (!Number.isFinite(tint.opacity) || tint.opacity < 0 || tint.opacity > 1) issues.push("tint-opacity-invalid");
+		return issues;
+	}
+	function parseTintColor(color) {
+		const value = color.replace(/^#/, "");
+		return [
+			parseInt(value.slice(0, 2), 16),
+			parseInt(value.slice(2, 4), 16),
+			parseInt(value.slice(4, 6), 16)
+		];
+	}
+	function applyTintChannel(source, tint, opacity, mode) {
+		const s = source / 255;
+		const t = tint / 255;
+		const blended = mode === "multiply" ? s * t : 1 - (1 - s) * (1 - t);
+		return Math.round(255 * (s * (1 - opacity) + blended * opacity));
+	}
+	//#endregion
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/contourShade.ts
+	function validateContourShade(shade) {
+		return Boolean(shade && /^#[0-9a-fA-F]{6}$/.test(shade.color) && typeof shade.yawParameter === "string" && shade.yawParameter.length && typeof shade.pitchParameter === "string" && shade.pitchParameter.length && Number.isFinite(shade.maxYaw) && shade.maxYaw > 0 && Number.isFinite(shade.maxPitch) && shade.maxPitch > 0 && Number.isFinite(shade.width) && shade.width > 0 && shade.width <= .5 && Number.isFinite(shade.strength) && shade.strength >= 0 && shade.strength <= 1 && Number.isFinite(shade.axisStrength) && shade.axisStrength >= 0 && shade.axisStrength <= 1 && (shade.profile === void 0 || shade.profile === "cheek") && (shade.farContourFade === void 0 || Number.isFinite(shade.farContourFade) && shade.farContourFade >= 0 && shade.farContourFade <= 1) && (shade.nearContourFade === void 0 || Number.isFinite(shade.nearContourFade) && shade.nearContourFade >= 0 && shade.nearContourFade <= 1) && (shade.upContourFade === void 0 || Number.isFinite(shade.upContourFade) && shade.upContourFade >= 0 && shade.upContourFade <= 1) && (shade.upShadowStrength === void 0 || Number.isFinite(shade.upShadowStrength) && shade.upShadowStrength >= 0 && shade.upShadowStrength <= 1) && (shade.lineWidth === void 0 || Number.isFinite(shade.lineWidth) && shade.lineWidth > 0 && shade.lineWidth <= .1));
+	}
+	var smooth = (value) => {
+		const t = Math.min(1, Math.max(0, value));
+		return t * t * (3 - 2 * t);
+	};
+	var ContourShadeProcessor = class {
+		source;
+		shade;
+		left;
+		right;
+		color;
+		lastKey = "";
+		lastImage;
+		volumeLeft;
+		volumeRight;
+		fadeLeft;
+		fadeRight;
+		nearFadeLeft;
+		nearFadeRight;
+		skinLeft;
+		skinRight;
+		jawInk;
+		jawShadow;
+		jawSkin;
+		constructor(source, shade) {
+			this.source = source;
+			this.shade = shade;
+			this.left = new Float32Array(source.width * source.height);
+			this.right = new Float32Array(this.left.length);
+			this.color = [
+				1,
+				3,
+				5
+			].map((i) => parseInt(shade.color.slice(i, i + 2), 16) / 255);
+			this.lastImage = source;
+			if (shade.profile === "cheek") {
+				this.volumeLeft = [
+					-1,
+					0,
+					1
+				].map(() => new Float32Array(this.left.length));
+				this.volumeRight = [
+					-1,
+					0,
+					1
+				].map(() => new Float32Array(this.left.length));
+			}
+			if (shade.farContourFade || shade.nearContourFade) {
+				this.fadeLeft = new Float32Array(this.left.length);
+				this.fadeRight = new Float32Array(this.left.length);
+				this.skinLeft = new Float32Array(source.height * 3);
+				this.skinRight = new Float32Array(source.height * 3);
+			}
+			if (shade.nearContourFade) {
+				this.nearFadeLeft = new Float32Array(this.left.length);
+				this.nearFadeRight = new Float32Array(this.left.length);
+			}
+			const band = Math.max(1, source.width * shade.width);
+			for (let y = 0; y < source.height; y++) {
+				let l = source.width, r = -1;
+				for (let x = 0; x < source.width; x++) if (source.data[(y * source.width + x) * 4 + 3] > 0) {
+					l = Math.min(l, x);
+					r = x;
+				}
+				if (r < l) continue;
+				let surfaceL = l, surfaceR = r, runStart = -1, longest = 0;
+				if (this.volumeLeft || this.fadeLeft) {
+					for (let x = l; x <= r + 1; x++) if (x <= r && source.data[(y * source.width + x) * 4 + 3] >= 128) {
+						if (runStart < 0) runStart = x;
+					} else if (runStart >= 0) {
+						if (x - runStart > longest) {
+							longest = x - runStart;
+							surfaceL = runStart;
+							surfaceR = x - 1;
+						}
+						runStart = -1;
+					}
+				}
+				const v = y / Math.max(1, source.height - 1);
+				const inkBand = Math.max(1, source.width * (shade.lineWidth ?? .035));
+				const inset = Math.min((surfaceR - surfaceL) / 2, inkBand * 2.1);
+				const skinX = [Math.round(surfaceL + inset), Math.round(surfaceR - inset)];
+				for (let c = 0; c < 3; c++) {
+					if (this.skinLeft) this.skinLeft[y * 3 + c] = source.data[(y * source.width + skinX[0]) * 4 + c];
+					if (this.skinRight) this.skinRight[y * 3 + c] = source.data[(y * source.width + skinX[1]) * 4 + c];
+				}
+				const cheekInk = smooth((v - .56) / .09) * (1 - smooth((v - .88) / .08));
+				const nearCheekInk = smooth((v - .63) / .17) * (1 - smooth((v - .985) / .015));
+				const widths = [
+					-1,
+					0,
+					1
+				].map((pitch) => band * (.4 + .85 * Math.exp(-(((v - (.7 + .055 * pitch)) / .17) ** 2))) * (1 - .6 * smooth((v - .87) / .11)));
+				const cheekPlane = smooth((v - .4) / .16) * (1 - .75 * smooth((v - .94) / .06));
+				for (let x = l; x <= r; x++) {
+					const p = y * source.width + x;
+					this.left[p] = Math.exp(-(((x - l) / band) ** 2));
+					this.right[p] = Math.exp(-(((r - x) / band) ** 2));
+					if (this.volumeLeft && this.volumeRight) for (let k = 0; k < 3; k++) {
+						this.volumeLeft[k][p] = cheekPlane * (1 - smooth(((x - surfaceL) / widths[k] - .2) / .8));
+						this.volumeRight[k][p] = cheekPlane * (1 - smooth(((surfaceR - x) / widths[k] - .2) / .8));
+					}
+					for (const [distance, field, nearField, skin] of [[
+						x - surfaceL,
+						this.fadeLeft,
+						this.nearFadeLeft,
+						this.skinLeft
+					], [
+						surfaceR - x,
+						this.fadeRight,
+						this.nearFadeRight,
+						this.skinRight
+					]]) {
+						if (!field || !skin) continue;
+						const i = p * 4;
+						const contrast = (skin[y * 3] - source.data[i]) * .2126 + (skin[y * 3 + 1] - source.data[i + 1]) * .7152 + (skin[y * 3 + 2] - source.data[i + 2]) * .0722;
+						const edgeInk = distance < -inkBand ? 0 : (1 - smooth((distance / inkBand - .5) / .5)) * smooth((contrast - 5) / 26);
+						field[p] = cheekInk * edgeInk;
+						if (nearField) nearField[p] = nearCheekInk * edgeInk;
+					}
+				}
+			}
+		}
+		prepareJaw() {
+			if (this.jawInk) return;
+			const { width, height, data } = this.source;
+			this.jawInk = new Float32Array(width * height);
+			this.jawShadow = new Float32Array(width * height);
+			this.jawSkin = new Float32Array(width * 3);
+			const inkBand = Math.max(1, width * (this.shade.lineWidth ?? .035));
+			const shadowBand = Math.max(1, height * .075);
+			for (let x = 0; x < width; x++) {
+				let start = -1, bottom = -1, longest = 0;
+				for (let y = Math.floor(height * .5); y <= height; y++) if (y < height && data[(y * width + x) * 4 + 3] >= 128) {
+					if (start < 0) start = y;
+				} else if (start >= 0) {
+					if (y - start > longest) {
+						longest = y - start;
+						bottom = y - 1;
+					}
+					start = -1;
+				}
+				if (bottom < 0) continue;
+				const sampleY = Math.round(bottom - Math.min(longest / 2, inkBand * 2.1));
+				for (let c = 0; c < 3; c++) this.jawSkin[x * 3 + c] = data[(sampleY * width + x) * 4 + c];
+				const lateral = 1 - smooth((Math.abs(x / Math.max(1, width - 1) - .5) - .16) / .24);
+				for (let y = Math.floor(height * .78); y < height; y++) {
+					const p = y * width + x, i = p * 4, distance = bottom - y;
+					if (distance < -inkBand || !data[i + 3]) continue;
+					const lowerJaw = lateral * smooth((y / Math.max(1, height - 1) - .78) / .13);
+					const contrast = (this.jawSkin[x * 3] - data[i]) * .2126 + (this.jawSkin[x * 3 + 1] - data[i + 1]) * .7152 + (this.jawSkin[x * 3 + 2] - data[i + 2]) * .0722;
+					this.jawInk[p] = lowerJaw * (1 - smooth((distance / inkBand - .5) / .5)) * smooth((contrast - 5) / 26);
+					this.jawShadow[p] = lowerJaw * Math.exp(-((Math.max(0, distance) / shadowBand) ** 2));
+				}
+			}
+		}
+		render(values, pitchUp = -1) {
+			const yaw = values[this.shade.yawParameter] ?? 0;
+			const pitch = -(values[this.shade.pitchParameter] ?? 0) * pitchUp;
+			if (!Number.isFinite(yaw) || !Number.isFinite(pitch)) return this.source;
+			const yawWeight = smooth(Math.abs(yaw) / this.shade.maxYaw);
+			const fade = (this.shade.farContourFade ?? 0) * yawWeight;
+			const nearFade = (this.shade.nearContourFade ?? 0) * smooth(Math.abs(yaw) / (this.shade.maxYaw * 2 / 3));
+			const upWeight = smooth(-pitch / this.shade.maxPitch);
+			const upFade = (this.shade.upContourFade ?? 0) * upWeight;
+			const upShadow = (this.shade.upShadowStrength ?? 0) * upWeight;
+			if (upFade > 0 || upShadow > 0) this.prepareJaw();
+			const strength = this.shade.strength * smooth(Math.abs(yaw) / this.shade.maxYaw) * (this.shade.axisStrength + (1 - this.shade.axisStrength) * smooth(Math.abs(pitch) / this.shade.maxPitch));
+			if (strength <= 0 && fade <= 0 && nearFade <= 0 && upFade <= 0 && upShadow <= 0) return this.source;
+			const pitchWeight = Math.min(1, Math.abs(pitch) / this.shade.maxPitch);
+			const key = `${yaw < 0}:${strength}:${fade}:${nearFade}:${upFade}:${upShadow}:${this.shade.profile ? pitch : 0}`;
+			if (key === this.lastKey) return this.lastImage;
+			const weights = yaw < 0 ? this.right : this.left;
+			const volume = yaw < 0 ? this.volumeRight : this.volumeLeft;
+			const fadeWeights = yaw < 0 ? this.fadeLeft : this.fadeRight;
+			const skin = yaw < 0 ? this.skinLeft : this.skinRight;
+			const nearFadeWeights = yaw < 0 ? this.nearFadeRight : this.nearFadeLeft;
+			const nearSkin = yaw < 0 ? this.skinRight : this.skinLeft;
+			const data = new Uint8ClampedArray(this.source.data);
+			for (let p = 0; p < weights.length; p++) {
+				const i = p * 4;
+				if (!data[i + 3]) continue;
+				const a = (volume ? volume[1][p] * (1 - pitchWeight) + volume[pitch < 0 ? 0 : 2][p] * pitchWeight : weights[p]) * strength;
+				const ink = fade * (fadeWeights?.[p] ?? 0);
+				const nearInk = nearFade * (nearFadeWeights?.[p] ?? 0);
+				const jawInk = upFade * (this.jawInk?.[p] ?? 0);
+				const jawShade = upShadow * (this.jawShadow?.[p] ?? 0);
+				const column = p % this.source.width * 3;
+				const row = Math.floor(p / this.source.width) * 3;
+				for (let c = 0; c < 3; c++) {
+					const skinColor = skin?.[row + c] ?? data[i + c];
+					const farSoftened = data[i + c] + ink * (skinColor - data[i + c]);
+					const softened = farSoftened + nearInk * ((nearSkin?.[row + c] ?? farSoftened) - farSoftened);
+					const jawSoftened = softened + jawInk * ((this.jawSkin?.[column + c] ?? softened) - softened);
+					const combinedShade = jawShade > 0 ? 1 - (1 - a) * (1 - jawShade) : a;
+					data[i + c] = Math.round(jawSoftened * (1 - combinedShade * (1 - this.color[c])));
+				}
+			}
+			this.lastKey = key;
+			return this.lastImage = {
+				width: this.source.width,
+				height: this.source.height,
+				data
+			};
+		}
+	};
+	var processors$1 = /* @__PURE__ */ new WeakMap();
+	function applyContourShade(source, shade, values, pitchUp = -1) {
+		if (!shade || !validateContourShade(shade)) return source;
+		const key = JSON.stringify(shade);
+		let entry = processors$1.get(source);
+		if (!entry || entry.key !== key) {
+			entry = {
+				key,
+				processor: new ContourShadeProcessor(source, shade)
+			};
+			processors$1.set(source, entry);
+		}
+		return entry.processor.render(values, pitchUp);
+	}
+	//#endregion
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/alphaReveal.ts
+	function validateAlphaReveal(reveal) {
+		return Boolean(reveal && typeof reveal.parameter === "string" && reveal.parameter.length && Number.isFinite(reveal.closed) && Number.isFinite(reveal.open) && reveal.open > reveal.closed && Number.isFinite(reveal.exponent) && reveal.exponent > 0 && reveal.exponent <= 4 && (reveal.anchor === void 0 || Number.isFinite(reveal.anchor) && reveal.anchor >= 0 && reveal.anchor <= 1));
+	}
+	/** A column-shaped aperture closing toward a configurable point in the contour.
+	* RGB stays untouched. Only the moving boundary has fractional coverage.
+	* This also applies when the image is drawn as an alpha clipping source.
+	*/
+	var AlphaRevealProcessor = class {
+		source;
+		reveal;
+		top;
+		bottom;
+		lastValue = -1;
+		lastImage;
+		constructor(source, reveal) {
+			this.source = source;
+			this.reveal = reveal;
+			this.top = new Int32Array(source.width).fill(source.height);
+			this.bottom = new Int32Array(source.width).fill(-1);
+			this.lastImage = source;
+			for (let y = 0; y < source.height; y++) for (let x = 0; x < source.width; x++) if (source.data[(y * source.width + x) * 4 + 3]) {
+				this.top[x] = Math.min(this.top[x], y);
+				this.bottom[x] = y;
+			}
+		}
+		render(values) {
+			const raw = values[this.reveal.parameter] ?? this.reveal.open;
+			const normalized = Number.isFinite(raw) ? Math.min(1, Math.max(0, (raw - this.reveal.closed) / (this.reveal.open - this.reveal.closed))) : 1;
+			if (normalized === 1) return this.source;
+			if (normalized === this.lastValue) return this.lastImage;
+			const fraction = normalized ** this.reveal.exponent;
+			const data = new Uint8ClampedArray(this.source.data);
+			for (let x = 0; x < this.source.width; x++) {
+				const span = this.bottom[x] + 1 - this.top[x];
+				const start = this.top[x] + span * (1 - fraction) * (this.reveal.anchor ?? 0);
+				const cut = start + span * fraction;
+				for (let y = 0; y < this.source.height; y++) {
+					const i = (y * this.source.width + x) * 4 + 3;
+					data[i] = Math.round(data[i] * Math.max(0, Math.min(y + 1, cut) - Math.max(y, start)));
+				}
+			}
+			this.lastValue = normalized;
+			return this.lastImage = {
+				width: this.source.width,
+				height: this.source.height,
+				data
+			};
+		}
+	};
+	var processors = /* @__PURE__ */ new WeakMap();
+	function applyAlphaReveal(source, reveal, values) {
+		if (!reveal || !validateAlphaReveal(reveal)) return source;
+		const key = JSON.stringify(reveal);
+		let entry = processors.get(source);
+		if (!entry || entry.key !== key) {
+			entry = {
+				key,
+				processor: new AlphaRevealProcessor(source, reveal)
+			};
+			processors.set(source, entry);
+		}
+		return entry.processor.render(values);
+	}
+	//#endregion
+	//#region scripts/evaluation/image-effects.ts
+	var effects = /* @__PURE__ */ new Map();
+	var cubismParameters = false;
+	function setEffectParameterConvention(cubism) {
+		cubismParameters = cubism;
+	}
+	function clearEffects() {
+		effects.clear();
+	}
+	function effectBuffer(length) {
+		if (!Number.isInteger(length) || length <= 0 || length > 64 * 1024 * 1024) throw Error("invalid effect buffer");
+		return new Uint8Array(length);
+	}
+	function registerEffect(id, width, height, bytes, json) {
+		const config = JSON.parse(json);
+		if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0 || width > 4096 || height > 4096 || bytes.length !== width * height * 4) throw Error("invalid effect dimensions");
+		if (config.tint && validatePartTint(config.tint).length) throw Error("invalid tint");
+		if (config.alphaReveal && !validateAlphaReveal(config.alphaReveal)) throw Error("invalid alpha reveal");
+		if (config.contourShade && !validateContourShade(config.contourShade)) throw Error("invalid contour shade");
+		const data = new Uint8ClampedArray(bytes);
+		if (config.tint) {
+			const tint = config.tint, color = parseTintColor(tint.color);
+			for (let i = 0; i < data.length; i += 4) for (let c = 0; c < 3; c++) data[i + c] = applyTintChannel(data[i + c], color[c], tint.opacity, tint.mode);
+		}
+		effects.set(id, {
+			source: {
+				width,
+				height,
+				data
+			},
+			config,
+			last: [null, null]
+		});
+	}
+	function renderEffect(id, json, ignoreVisualAlpha) {
+		const effect = effects.get(id);
+		if (!effect) throw Error("unknown effect");
+		const values = JSON.parse(json);
+		if (!values || Array.isArray(values) || typeof values !== "object" || Object.values(values).some((v) => typeof v !== "number" || !Number.isFinite(v))) throw Error("invalid effect values");
+		const pitchUp = cubismParameters && effect.config.contourShade?.pitchParameter === "ParamAngleY" ? 1 : -1;
+		const result = applyAlphaReveal(ignoreVisualAlpha ? effect.source : applyContourShade(effect.source, effect.config.contourShade, values, pitchUp), effect.config.alphaReveal, values), slot = ignoreVisualAlpha ? 1 : 0;
+		if (effect.last[slot] === result) return null;
+		const bgra = new Uint8Array(result.data.length);
+		for (let i = 0; i < bgra.length; i += 4) {
+			const a = result.data[i + 3];
+			bgra[i] = Math.round(result.data[i + 2] * a / 255);
+			bgra[i + 1] = Math.round(result.data[i + 1] * a / 255);
+			bgra[i + 2] = Math.round(result.data[i] * a / 255);
+			bgra[i + 3] = a;
+		}
+		effect.last[slot] = result;
+		return bgra;
+	}
+	//#endregion
 	//#region src/tracking/faceInputs.ts
 	function faceLandmarkerResultToTrackingInput(result) {
 		const landmarkAngles = rotationFromMatrix(result.facialTransformationMatrixes?.[0]) ?? rotationFromLandmarks(result.faceLandmarks?.[0]);
@@ -8618,7 +9035,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/motion.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/motion.ts
 	function object$1(value, keys) {
 		if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((k) => !keys.includes(k))) throw Error("invalid motion object/unknown field");
 	}
@@ -8722,7 +9139,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return Object.fromEntries(clip.tracks.map((t) => [t.parameter, sampleMotionTrack(t, time)]));
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/facial.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/core/src/facial.ts
 	var jsonClone$1 = (value) => JSON.parse(JSON.stringify(value));
 	var VISEME_IDS = [
 		"A",
@@ -8837,7 +9254,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		return jsonClone$1(value);
 	}
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/runtime/src/facial.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/runtime/src/facial.ts
 	var jsonClone = (value) => JSON.parse(JSON.stringify(value));
 	var weight = (f, now) => f.duration === 0 ? f.to : f.from + (f.to - f.from) * Math.max(0, Math.min(1, (now - f.start) / f.duration));
 	var finiteSaturation = (v) => Math.max(-Number.MAX_VALUE, Math.min(Number.MAX_VALUE, v));
@@ -9026,7 +9443,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}
 	};
 	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/runtime/src/physicsStepping.ts
+	//#region workspace/vendor/standrig-evaluation/e578f2e176bb3d5180f9eaf02308be441688eb84/packages/runtime/src/physicsStepping.ts
 	/** Bounded catch-up for a live renderer. Geometry is evaluated only once. */
 	function prepareLivePhysicsStep(rig, values, previous, state, elapsed, time) {
 		const duration = Math.min(.25, Math.max(1e-4, Number.isFinite(elapsed) ? elapsed : 1 / 60));
@@ -9048,368 +9465,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			duration,
 			steps
 		};
-	}
-	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/tint.ts
-	function validatePartTint(tint) {
-		if (!tint) return [];
-		const issues = [];
-		if (tint.mode !== "multiply" && tint.mode !== "screen") issues.push("tint-mode-invalid");
-		if (typeof tint.color !== "string" || !/^#[0-9a-fA-F]{6}$/.test(tint.color)) issues.push("tint-color-invalid");
-		if (!Number.isFinite(tint.opacity) || tint.opacity < 0 || tint.opacity > 1) issues.push("tint-opacity-invalid");
-		return issues;
-	}
-	function parseTintColor(color) {
-		const value = color.replace(/^#/, "");
-		return [
-			parseInt(value.slice(0, 2), 16),
-			parseInt(value.slice(2, 4), 16),
-			parseInt(value.slice(4, 6), 16)
-		];
-	}
-	function applyTintChannel(source, tint, opacity, mode) {
-		const s = source / 255;
-		const t = tint / 255;
-		const blended = mode === "multiply" ? s * t : 1 - (1 - s) * (1 - t);
-		return Math.round(255 * (s * (1 - opacity) + blended * opacity));
-	}
-	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/contourShade.ts
-	function validateContourShade(shade) {
-		return Boolean(shade && /^#[0-9a-fA-F]{6}$/.test(shade.color) && typeof shade.yawParameter === "string" && shade.yawParameter.length && typeof shade.pitchParameter === "string" && shade.pitchParameter.length && Number.isFinite(shade.maxYaw) && shade.maxYaw > 0 && Number.isFinite(shade.maxPitch) && shade.maxPitch > 0 && Number.isFinite(shade.width) && shade.width > 0 && shade.width <= .5 && Number.isFinite(shade.strength) && shade.strength >= 0 && shade.strength <= 1 && Number.isFinite(shade.axisStrength) && shade.axisStrength >= 0 && shade.axisStrength <= 1 && (shade.profile === void 0 || shade.profile === "cheek") && (shade.farContourFade === void 0 || Number.isFinite(shade.farContourFade) && shade.farContourFade >= 0 && shade.farContourFade <= 1) && (shade.nearContourFade === void 0 || Number.isFinite(shade.nearContourFade) && shade.nearContourFade >= 0 && shade.nearContourFade <= 1) && (shade.upContourFade === void 0 || Number.isFinite(shade.upContourFade) && shade.upContourFade >= 0 && shade.upContourFade <= 1) && (shade.upShadowStrength === void 0 || Number.isFinite(shade.upShadowStrength) && shade.upShadowStrength >= 0 && shade.upShadowStrength <= 1) && (shade.lineWidth === void 0 || Number.isFinite(shade.lineWidth) && shade.lineWidth > 0 && shade.lineWidth <= .1));
-	}
-	var smooth = (value) => {
-		const t = Math.min(1, Math.max(0, value));
-		return t * t * (3 - 2 * t);
-	};
-	var ContourShadeProcessor = class {
-		source;
-		shade;
-		left;
-		right;
-		color;
-		lastKey = "";
-		lastImage;
-		volumeLeft;
-		volumeRight;
-		fadeLeft;
-		fadeRight;
-		nearFadeLeft;
-		nearFadeRight;
-		skinLeft;
-		skinRight;
-		jawInk;
-		jawShadow;
-		jawSkin;
-		constructor(source, shade) {
-			this.source = source;
-			this.shade = shade;
-			this.left = new Float32Array(source.width * source.height);
-			this.right = new Float32Array(this.left.length);
-			this.color = [
-				1,
-				3,
-				5
-			].map((i) => parseInt(shade.color.slice(i, i + 2), 16) / 255);
-			this.lastImage = source;
-			if (shade.profile === "cheek") {
-				this.volumeLeft = [
-					-1,
-					0,
-					1
-				].map(() => new Float32Array(this.left.length));
-				this.volumeRight = [
-					-1,
-					0,
-					1
-				].map(() => new Float32Array(this.left.length));
-			}
-			if (shade.farContourFade || shade.nearContourFade) {
-				this.fadeLeft = new Float32Array(this.left.length);
-				this.fadeRight = new Float32Array(this.left.length);
-				this.skinLeft = new Float32Array(source.height * 3);
-				this.skinRight = new Float32Array(source.height * 3);
-			}
-			if (shade.nearContourFade) {
-				this.nearFadeLeft = new Float32Array(this.left.length);
-				this.nearFadeRight = new Float32Array(this.left.length);
-			}
-			const band = Math.max(1, source.width * shade.width);
-			for (let y = 0; y < source.height; y++) {
-				let l = source.width, r = -1;
-				for (let x = 0; x < source.width; x++) if (source.data[(y * source.width + x) * 4 + 3] > 0) {
-					l = Math.min(l, x);
-					r = x;
-				}
-				if (r < l) continue;
-				let surfaceL = l, surfaceR = r, runStart = -1, longest = 0;
-				if (this.volumeLeft || this.fadeLeft) {
-					for (let x = l; x <= r + 1; x++) if (x <= r && source.data[(y * source.width + x) * 4 + 3] >= 128) {
-						if (runStart < 0) runStart = x;
-					} else if (runStart >= 0) {
-						if (x - runStart > longest) {
-							longest = x - runStart;
-							surfaceL = runStart;
-							surfaceR = x - 1;
-						}
-						runStart = -1;
-					}
-				}
-				const v = y / Math.max(1, source.height - 1);
-				const inkBand = Math.max(1, source.width * (shade.lineWidth ?? .035));
-				const inset = Math.min((surfaceR - surfaceL) / 2, inkBand * 2.1);
-				const skinX = [Math.round(surfaceL + inset), Math.round(surfaceR - inset)];
-				for (let c = 0; c < 3; c++) {
-					if (this.skinLeft) this.skinLeft[y * 3 + c] = source.data[(y * source.width + skinX[0]) * 4 + c];
-					if (this.skinRight) this.skinRight[y * 3 + c] = source.data[(y * source.width + skinX[1]) * 4 + c];
-				}
-				const cheekInk = smooth((v - .56) / .09) * (1 - smooth((v - .88) / .08));
-				const nearCheekInk = smooth((v - .63) / .17) * (1 - smooth((v - .985) / .015));
-				const widths = [
-					-1,
-					0,
-					1
-				].map((pitch) => band * (.4 + .85 * Math.exp(-(((v - (.7 + .055 * pitch)) / .17) ** 2))) * (1 - .6 * smooth((v - .87) / .11)));
-				const cheekPlane = smooth((v - .4) / .16) * (1 - .75 * smooth((v - .94) / .06));
-				for (let x = l; x <= r; x++) {
-					const p = y * source.width + x;
-					this.left[p] = Math.exp(-(((x - l) / band) ** 2));
-					this.right[p] = Math.exp(-(((r - x) / band) ** 2));
-					if (this.volumeLeft && this.volumeRight) for (let k = 0; k < 3; k++) {
-						this.volumeLeft[k][p] = cheekPlane * (1 - smooth(((x - surfaceL) / widths[k] - .2) / .8));
-						this.volumeRight[k][p] = cheekPlane * (1 - smooth(((surfaceR - x) / widths[k] - .2) / .8));
-					}
-					for (const [distance, field, nearField, skin] of [[
-						x - surfaceL,
-						this.fadeLeft,
-						this.nearFadeLeft,
-						this.skinLeft
-					], [
-						surfaceR - x,
-						this.fadeRight,
-						this.nearFadeRight,
-						this.skinRight
-					]]) {
-						if (!field || !skin) continue;
-						const i = p * 4;
-						const contrast = (skin[y * 3] - source.data[i]) * .2126 + (skin[y * 3 + 1] - source.data[i + 1]) * .7152 + (skin[y * 3 + 2] - source.data[i + 2]) * .0722;
-						const edgeInk = distance < -inkBand ? 0 : (1 - smooth((distance / inkBand - .5) / .5)) * smooth((contrast - 5) / 26);
-						field[p] = cheekInk * edgeInk;
-						if (nearField) nearField[p] = nearCheekInk * edgeInk;
-					}
-				}
-			}
-		}
-		prepareJaw() {
-			if (this.jawInk) return;
-			const { width, height, data } = this.source;
-			this.jawInk = new Float32Array(width * height);
-			this.jawShadow = new Float32Array(width * height);
-			this.jawSkin = new Float32Array(width * 3);
-			const inkBand = Math.max(1, width * (this.shade.lineWidth ?? .035));
-			const shadowBand = Math.max(1, height * .075);
-			for (let x = 0; x < width; x++) {
-				let start = -1, bottom = -1, longest = 0;
-				for (let y = Math.floor(height * .5); y <= height; y++) if (y < height && data[(y * width + x) * 4 + 3] >= 128) {
-					if (start < 0) start = y;
-				} else if (start >= 0) {
-					if (y - start > longest) {
-						longest = y - start;
-						bottom = y - 1;
-					}
-					start = -1;
-				}
-				if (bottom < 0) continue;
-				const sampleY = Math.round(bottom - Math.min(longest / 2, inkBand * 2.1));
-				for (let c = 0; c < 3; c++) this.jawSkin[x * 3 + c] = data[(sampleY * width + x) * 4 + c];
-				const lateral = 1 - smooth((Math.abs(x / Math.max(1, width - 1) - .5) - .16) / .24);
-				for (let y = Math.floor(height * .78); y < height; y++) {
-					const p = y * width + x, i = p * 4, distance = bottom - y;
-					if (distance < -inkBand || !data[i + 3]) continue;
-					const lowerJaw = lateral * smooth((y / Math.max(1, height - 1) - .78) / .13);
-					const contrast = (this.jawSkin[x * 3] - data[i]) * .2126 + (this.jawSkin[x * 3 + 1] - data[i + 1]) * .7152 + (this.jawSkin[x * 3 + 2] - data[i + 2]) * .0722;
-					this.jawInk[p] = lowerJaw * (1 - smooth((distance / inkBand - .5) / .5)) * smooth((contrast - 5) / 26);
-					this.jawShadow[p] = lowerJaw * Math.exp(-((Math.max(0, distance) / shadowBand) ** 2));
-				}
-			}
-		}
-		render(values) {
-			const yaw = values[this.shade.yawParameter] ?? 0;
-			const pitch = values[this.shade.pitchParameter] ?? 0;
-			if (!Number.isFinite(yaw) || !Number.isFinite(pitch)) return this.source;
-			const yawWeight = smooth(Math.abs(yaw) / this.shade.maxYaw);
-			const fade = (this.shade.farContourFade ?? 0) * yawWeight;
-			const nearFade = (this.shade.nearContourFade ?? 0) * smooth(Math.abs(yaw) / (this.shade.maxYaw * 2 / 3));
-			const upWeight = smooth(-pitch / this.shade.maxPitch);
-			const upFade = (this.shade.upContourFade ?? 0) * upWeight;
-			const upShadow = (this.shade.upShadowStrength ?? 0) * upWeight;
-			if (upFade > 0 || upShadow > 0) this.prepareJaw();
-			const strength = this.shade.strength * smooth(Math.abs(yaw) / this.shade.maxYaw) * (this.shade.axisStrength + (1 - this.shade.axisStrength) * smooth(Math.abs(pitch) / this.shade.maxPitch));
-			if (strength <= 0 && fade <= 0 && nearFade <= 0 && upFade <= 0 && upShadow <= 0) return this.source;
-			const pitchWeight = Math.min(1, Math.abs(pitch) / this.shade.maxPitch);
-			const key = `${yaw < 0}:${strength}:${fade}:${nearFade}:${upFade}:${upShadow}:${this.shade.profile ? pitch : 0}`;
-			if (key === this.lastKey) return this.lastImage;
-			const weights = yaw < 0 ? this.right : this.left;
-			const volume = yaw < 0 ? this.volumeRight : this.volumeLeft;
-			const fadeWeights = yaw < 0 ? this.fadeLeft : this.fadeRight;
-			const skin = yaw < 0 ? this.skinLeft : this.skinRight;
-			const nearFadeWeights = yaw < 0 ? this.nearFadeRight : this.nearFadeLeft;
-			const nearSkin = yaw < 0 ? this.skinRight : this.skinLeft;
-			const data = new Uint8ClampedArray(this.source.data);
-			for (let p = 0; p < weights.length; p++) {
-				const i = p * 4;
-				if (!data[i + 3]) continue;
-				const a = (volume ? volume[1][p] * (1 - pitchWeight) + volume[pitch < 0 ? 0 : 2][p] * pitchWeight : weights[p]) * strength;
-				const ink = fade * (fadeWeights?.[p] ?? 0);
-				const nearInk = nearFade * (nearFadeWeights?.[p] ?? 0);
-				const jawInk = upFade * (this.jawInk?.[p] ?? 0);
-				const jawShade = upShadow * (this.jawShadow?.[p] ?? 0);
-				const column = p % this.source.width * 3;
-				const row = Math.floor(p / this.source.width) * 3;
-				for (let c = 0; c < 3; c++) {
-					const skinColor = skin?.[row + c] ?? data[i + c];
-					const farSoftened = data[i + c] + ink * (skinColor - data[i + c]);
-					const softened = farSoftened + nearInk * ((nearSkin?.[row + c] ?? farSoftened) - farSoftened);
-					const jawSoftened = softened + jawInk * ((this.jawSkin?.[column + c] ?? softened) - softened);
-					const combinedShade = jawShade > 0 ? 1 - (1 - a) * (1 - jawShade) : a;
-					data[i + c] = Math.round(jawSoftened * (1 - combinedShade * (1 - this.color[c])));
-				}
-			}
-			this.lastKey = key;
-			return this.lastImage = {
-				width: this.source.width,
-				height: this.source.height,
-				data
-			};
-		}
-	};
-	var processors$1 = /* @__PURE__ */ new WeakMap();
-	function applyContourShade(source, shade, values) {
-		if (!shade || !validateContourShade(shade)) return source;
-		const key = JSON.stringify(shade);
-		let entry = processors$1.get(source);
-		if (!entry || entry.key !== key) {
-			entry = {
-				key,
-				processor: new ContourShadeProcessor(source, shade)
-			};
-			processors$1.set(source, entry);
-		}
-		return entry.processor.render(values);
-	}
-	//#endregion
-	//#region workspace/vendor/standrig-evaluation/d7394aa55db63191e7b233bc50cdb3b8094f8540/packages/core/src/alphaReveal.ts
-	function validateAlphaReveal(reveal) {
-		return Boolean(reveal && typeof reveal.parameter === "string" && reveal.parameter.length && Number.isFinite(reveal.closed) && Number.isFinite(reveal.open) && reveal.open > reveal.closed && Number.isFinite(reveal.exponent) && reveal.exponent > 0 && reveal.exponent <= 4 && (reveal.anchor === void 0 || Number.isFinite(reveal.anchor) && reveal.anchor >= 0 && reveal.anchor <= 1));
-	}
-	/** A column-shaped aperture closing toward a configurable point in the contour.
-	* RGB stays untouched. Only the moving boundary has fractional coverage.
-	* This also applies when the image is drawn as an alpha clipping source.
-	*/
-	var AlphaRevealProcessor = class {
-		source;
-		reveal;
-		top;
-		bottom;
-		lastValue = -1;
-		lastImage;
-		constructor(source, reveal) {
-			this.source = source;
-			this.reveal = reveal;
-			this.top = new Int32Array(source.width).fill(source.height);
-			this.bottom = new Int32Array(source.width).fill(-1);
-			this.lastImage = source;
-			for (let y = 0; y < source.height; y++) for (let x = 0; x < source.width; x++) if (source.data[(y * source.width + x) * 4 + 3]) {
-				this.top[x] = Math.min(this.top[x], y);
-				this.bottom[x] = y;
-			}
-		}
-		render(values) {
-			const raw = values[this.reveal.parameter] ?? this.reveal.open;
-			const normalized = Number.isFinite(raw) ? Math.min(1, Math.max(0, (raw - this.reveal.closed) / (this.reveal.open - this.reveal.closed))) : 1;
-			if (normalized === 1) return this.source;
-			if (normalized === this.lastValue) return this.lastImage;
-			const fraction = normalized ** this.reveal.exponent;
-			const data = new Uint8ClampedArray(this.source.data);
-			for (let x = 0; x < this.source.width; x++) {
-				const span = this.bottom[x] + 1 - this.top[x];
-				const start = this.top[x] + span * (1 - fraction) * (this.reveal.anchor ?? 0);
-				const cut = start + span * fraction;
-				for (let y = 0; y < this.source.height; y++) {
-					const i = (y * this.source.width + x) * 4 + 3;
-					data[i] = Math.round(data[i] * Math.max(0, Math.min(y + 1, cut) - Math.max(y, start)));
-				}
-			}
-			this.lastValue = normalized;
-			return this.lastImage = {
-				width: this.source.width,
-				height: this.source.height,
-				data
-			};
-		}
-	};
-	var processors = /* @__PURE__ */ new WeakMap();
-	function applyAlphaReveal(source, reveal, values) {
-		if (!reveal || !validateAlphaReveal(reveal)) return source;
-		const key = JSON.stringify(reveal);
-		let entry = processors.get(source);
-		if (!entry || entry.key !== key) {
-			entry = {
-				key,
-				processor: new AlphaRevealProcessor(source, reveal)
-			};
-			processors.set(source, entry);
-		}
-		return entry.processor.render(values);
-	}
-	//#endregion
-	//#region scripts/evaluation/image-effects.ts
-	var effects = /* @__PURE__ */ new Map();
-	function clearEffects() {
-		effects.clear();
-	}
-	function effectBuffer(length) {
-		if (!Number.isInteger(length) || length <= 0 || length > 64 * 1024 * 1024) throw Error("invalid effect buffer");
-		return new Uint8Array(length);
-	}
-	function registerEffect(id, width, height, bytes, json) {
-		const config = JSON.parse(json);
-		if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0 || width > 4096 || height > 4096 || bytes.length !== width * height * 4) throw Error("invalid effect dimensions");
-		if (config.tint && validatePartTint(config.tint).length) throw Error("invalid tint");
-		if (config.alphaReveal && !validateAlphaReveal(config.alphaReveal)) throw Error("invalid alpha reveal");
-		if (config.contourShade && !validateContourShade(config.contourShade)) throw Error("invalid contour shade");
-		const data = new Uint8ClampedArray(bytes);
-		if (config.tint) {
-			const tint = config.tint, color = parseTintColor(tint.color);
-			for (let i = 0; i < data.length; i += 4) for (let c = 0; c < 3; c++) data[i + c] = applyTintChannel(data[i + c], color[c], tint.opacity, tint.mode);
-		}
-		effects.set(id, {
-			source: {
-				width,
-				height,
-				data
-			},
-			config,
-			last: [null, null]
-		});
-	}
-	function renderEffect(id, json, ignoreVisualAlpha) {
-		const effect = effects.get(id);
-		if (!effect) throw Error("unknown effect");
-		const values = JSON.parse(json);
-		if (!values || Array.isArray(values) || typeof values !== "object" || Object.values(values).some((v) => typeof v !== "number" || !Number.isFinite(v))) throw Error("invalid effect values");
-		const result = applyAlphaReveal(ignoreVisualAlpha ? effect.source : applyContourShade(effect.source, effect.config.contourShade, values), effect.config.alphaReveal, values), slot = ignoreVisualAlpha ? 1 : 0;
-		if (effect.last[slot] === result) return null;
-		const bgra = new Uint8Array(result.data.length);
-		for (let i = 0; i < bgra.length; i += 4) {
-			const a = result.data[i + 3];
-			bgra[i] = Math.round(result.data[i + 2] * a / 255);
-			bgra[i + 1] = Math.round(result.data[i + 1] * a / 255);
-			bgra[i + 2] = Math.round(result.data[i] * a / 255);
-			bgra[i + 3] = a;
-		}
-		effect.last[slot] = result;
-		return bgra;
 	}
 	//#endregion
 	//#region scripts/evaluation/entry.ts
@@ -9509,11 +9564,14 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		meshCache.clear();
 		samples = coreMs = geometryMs = samplingMs = projectionMs = validationMs = 0;
 		initializeTracking(defs);
+		const cubism = usesCubismParameters(next);
+		setEffectParameterConvention(cubism);
 		return JSON.stringify({
 			contract: 1,
 			name: rig.name,
 			parts: rig.parts.length,
 			parameters: defs,
+			parameterConvention: cubism ? "cubism" : "standrig-legacy",
 			stage: rig.stage,
 			rendererReady: false,
 			trackingRedirects: redirects.map((r) => ({

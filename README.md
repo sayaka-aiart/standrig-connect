@@ -66,6 +66,8 @@ powershell -NoProfile -File scripts/setup-native-inference.ps1
 
 合成順は通常入力 → トラッキング → 待機の加算 → 読込モーション → 表情 → 母音 → 数値API上書き → 物理 → 描画。後段が指定した項目を優先します。待機は目・口に触れません。呼吸用パラメータがモデルに結び付いていない場合は、足元を基準にモデルをわずかに上下伸縮させます。
 
+StandRigで新しく作ったCubism規約のモデルは、Connectで顔・体・視線の上向きがプラス、目は0で閉じて1で開く設定になります。口の開閉は `ParamMouthOpenY`、笑顔・への字は `ParamMouthForm`、丸口・横長口はStandRigの `ParamMouthRound` に割り当てます。既存モデルの保存済みトラッキングプロファイルは、モデルスロットを開くと引き継がれます。
+
 ## 外部からパラメータを操作する
 
 Connectの外部パラメータAPIは `http://127.0.0.1:22036` で、パラメータ一覧・値域の取得、一時上書き、個別／全解除に対応します。AIのスクリプトや外部ツールから直接呼び出せるため、StandRig本体の起動は不要です。認証情報は `%LOCALAPPDATA%\StandRigConnect\api-session.json` に保存され、Connectの「API」タブで場所を確認できます。認証ファイルは共有・コミットしないでください。

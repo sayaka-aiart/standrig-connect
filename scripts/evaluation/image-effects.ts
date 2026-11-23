@@ -2,6 +2,8 @@ import { applyTintChannel, parseTintColor, validatePartTint } from '@core/tint';
 import { applyContourShade, validateContourShade } from '@core/contourShade';
 import { applyAlphaReveal, validateAlphaReveal } from '@core/alphaReveal';
 const effects=new Map<string,any>();
+let cubismParameters=false;
+export function setEffectParameterConvention(cubism:boolean){cubismParameters=cubism;}
 export function clearEffects(){effects.clear();}
 export function effectBuffer(length:number){if(!Number.isInteger(length)||length<=0||length>64*1024*1024)throw Error('invalid effect buffer');return new Uint8Array(length);}
 export function registerEffect(id:string,width:number,height:number,bytes:Uint8Array,json:string){
@@ -18,7 +20,8 @@ export function renderEffect(id:string,json:string,ignoreVisualAlpha:boolean){
  const effect=effects.get(id);if(!effect)throw Error('unknown effect');
  const values=JSON.parse(json);
  if(!values||Array.isArray(values)||typeof values!=='object'||Object.values(values).some(v=>typeof v!=='number'||!Number.isFinite(v)))throw Error('invalid effect values');
- const shaded=ignoreVisualAlpha?effect.source:applyContourShade(effect.source,effect.config.contourShade,values);
+ const pitchUp=cubismParameters&&effect.config.contourShade?.pitchParameter==='ParamAngleY'?1:-1;
+ const shaded=ignoreVisualAlpha?effect.source:applyContourShade(effect.source,effect.config.contourShade,values,pitchUp);
  const result=applyAlphaReveal(shaded,effect.config.alphaReveal,values),slot=ignoreVisualAlpha?1:0;
  if(effect.last[slot]===result)return null;
  const bgra=new Uint8Array(result.data.length);

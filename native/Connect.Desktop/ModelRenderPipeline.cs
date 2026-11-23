@@ -84,7 +84,7 @@ internal sealed class ModelRenderPipeline : IFramePipeline
             }
             if(reasons.Count>0)throw new NotSupportedException("Native renderer unsupported features: "+string.Join(", ",reasons.Take(12)));
             using var metadata=JsonDocument.Parse(evaluator.Load(json));
-            if(initialTrackingProfile!=null)tracking?.LoadProfile(initialTrackingProfile);else if(autoTracking)tracking?.LoadProfile(DefaultTracking.Create(metadata.RootElement.GetProperty("parameters")));
+            if(initialTrackingProfile!=null)tracking?.LoadProfile(initialTrackingProfile);else if(autoTracking)tracking?.LoadProfile(DefaultTracking.CreateForModel(metadata.RootElement));
             foreach(var p in metadata.RootElement.GetProperty("parameters").EnumerateArray())values[p.GetProperty("id").GetString()!]=p.GetProperty("default").GetDouble();
             foreach(var p in metadata.RootElement.GetProperty("parameters").EnumerateArray())ranges[p.GetProperty("id").GetString()!]=(p.GetProperty("min").GetDouble(),p.GetProperty("max").GetDouble());
             var stage=metadata.RootElement.GetProperty("stage");double w=stage.GetProperty("width").GetDouble(),h=stage.GetProperty("height").GetDouble();

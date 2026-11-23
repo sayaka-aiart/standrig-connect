@@ -39,6 +39,8 @@ for(int frame=0;frame<1800;frame++){
 Check(manual["ParamAngleX"]==7&&!manual.ContainsKey("ParamMouthOpen"),"demo leaves external input intact for OFF restoration");
 manual["ParamAngleX"]=12;
 Check(DemoPose.Apply(manual,limits,1)["Custom"]==.4&&manual["ParamAngleX"]==12,"input updates during demo remain available");
+var cubismDemo=DemoPose.Apply(new Dictionary<string,double>(),new Dictionary<string,(double,double)>{{"ParamMouthOpenY",(0,1)}},.5);
+Check(cubismDemo.TryGetValue("ParamMouthOpenY",out double mouthOpening)&&mouthOpening>0&&!cubismDemo.ContainsKey("ParamMouthOpen"),"demo uses the model's Cubism mouth parameter");
 var idleInput=new Dictionary<string,double>{{"ParamAngleX",0},{"ParamAngleY",0},{"ParamAngleZ",0},{"ParamBodyAngleX",0},{"ParamBodyAngleY",0},{"ParamBodyAngleZ",0},{"ParamEyeLOpen",.7},{"ParamMouthOpen",.3}};
 var idleRanges=idleInput.ToDictionary(p=>p.Key,p=>p.Key.Contains("Open")?(0d,1d):(-30d,30d));
 foreach(var preset in new[]{IdlePreset.Breathing,IdlePreset.Sway,IdlePreset.Random}){

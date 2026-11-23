@@ -7,7 +7,10 @@ public static class DemoPose
     public static Dictionary<string,double> Apply(IReadOnlyDictionary<string,double> input,IReadOnlyDictionary<string,(double Min,double Max)> ranges,double seconds)
     {
         var result=new Dictionary<string,double>(input);int i=0;
-        foreach(string id in Channels)if(ranges.TryGetValue(id,out var r))result[id]=(r.Min+r.Max)/2+(r.Max-r.Min)/2*Math.Sin(seconds*(.8+i++*.17));
+        foreach(string channel in Channels) {
+            string id=channel=="ParamMouthOpen"&&!ranges.ContainsKey(channel)?"ParamMouthOpenY":channel;
+            if(ranges.TryGetValue(id,out var r))result[id]=(r.Min+r.Max)/2+(r.Max-r.Min)/2*Math.Sin(seconds*(.8+i++*.17));
+        }
         return result;
     }
 }

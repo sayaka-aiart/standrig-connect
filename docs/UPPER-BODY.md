@@ -29,6 +29,6 @@ Lite float16 version 1, downloaded separately; not bundled with source.
 SHA-256: `59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a`.
 Redistribution review for bundled models remains separate.
 
-顔Yの標準倍率は30、身体Yは20です。既存のConnect標準スロットは倍率比率を保って一度だけ更新します（独自名のプロファイルは維持）。上半身は起動時ONです。身体Yには両肩と腰が映る画角が必要で、腰未検出時は身体Yのみ保持後に戻します。更新後は正面姿勢で中立校正をやり直してください。
+顔Yの標準倍率は30です。身体YはCubism規約のモデルでは10、従来のConnect標準では20です。既存のConnect標準スロットは倍率比率を保って一度だけ更新します（独自名のプロファイルは維持）。上半身は起動時ONです。身体Yには両肩と腰が映る画角が必要で、腰未検出時は身体Yのみ保持後に戻します。更新後は正面姿勢で中立校正をやり直してください。
 
-Default face/body pitch gains are 30/20. Existing Connect standard profiles upgrade once while preserving relative gains; custom-named profiles are unchanged. Upper-body tracking defaults to ON. Pitch requires visible shoulders and hips; missing hips hold then release pitch only. Recalibrate neutral after updating.
+The default face pitch gain is 30. The body pitch gain is 10 for Cubism-convention models and 20 for legacy Connect defaults. Existing Connect standard profiles upgrade once while preserving relative gains; custom-named profiles are unchanged. Upper-body tracking defaults to ON. Pitch requires visible shoulders and hips; missing hips hold then release pitch only. Recalibrate neutral after updating.

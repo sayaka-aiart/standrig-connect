@@ -332,7 +332,7 @@ internal sealed partial class MainWindow : Form
         var sliders=new List<(string Source,string Parameter,TrackBar Gain,CheckBox Invert,Label Label,bool DefaultInvert)>();
         bool resetting=false;
         void ApplyAdjustments(){if(resetting)return;foreach(var item in sliders)Tracking?.Adjust(item.Source,item.Gain.Value/100.0,item.Invert.Checked,smoothSlider.Value/100.0,eyeClosedSlider.Value/100.0);}
-        foreach(var mapping in DefaultTracking.Mappings){
+        foreach(var mapping in DefaultTracking.AdjustmentMappings){
             var row=new FlowLayoutPanel {AutoSize=true,WrapContents=false};
             var label=new Label {Text=mapping.Label+" 1.00倍",Width=150};
             var gain=new TrackBar {Minimum=0,Maximum=300,Value=100,Width=230,Height=32,TickStyle=TickStyle.None};

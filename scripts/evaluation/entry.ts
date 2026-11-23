@@ -2,7 +2,7 @@ import { migrateRigDocument } from '@core/migration';
 import { unpackModel } from './packed-rig';
 import { prepareRigBindingOrder } from '@core/bindingPreparation';
 import { resolveRigFrame } from '@core/evaluator';
-import { parameterDefinitionsForRig, defaultParameterValues } from '@core/parameters';
+import { parameterDefinitionsForRig, defaultParameterValues, usesCubismParameters } from '@core/parameters';
 // Added by the pinned-source build adapter; valid only for this immutable session.
 import { prepareNativeArtMeshResolver } from '@core/artMesh';
 import { applySkinningToVertices } from '@core/skinning';
@@ -12,6 +12,7 @@ import { finalGeometry } from './final-geometry';
 import { renderSelection } from './render-selection';
 import { validateFinitePacket } from './finite-packet';
 import { initializeTracking } from './tracking-session';
+import { setEffectParameterConvention } from './image-effects';
 export {loadTrackingProfile,mapTracking,resetTracking,calibrateTracking,exportTrackingProfile} from './tracking-session';
 export {convertFace} from './face-input';
 import { parseMotion,validateMotionParameters,sampleMotion } from '@core/motion';
@@ -53,7 +54,9 @@ export function load(json:string){
  const nextDefaults=defaultParameterValues(next),nextAssets=new Map<string,any>(next.assets.map((a:any)=>[a.id,a]));
  rig=next;facial=nextFacial;redirects=nextRedirects;defaultValues=nextDefaults;assetsById=nextAssets;motion=undefined;definitions=new Map(defs.map(d=>[d.id,d]));physics=new Map();lastTime=undefined;lastPacket=undefined;meshCache.clear();samples=coreMs=geometryMs=samplingMs=projectionMs=validationMs=0;
  initializeTracking(defs);
- return JSON.stringify({contract:1,name:rig.name,parts:rig.parts.length,parameters:defs,stage:rig.stage,rendererReady:false,trackingRedirects:redirects.map(r=>({from:r.from,to:r.to,factor:r.factor,viaPendulum:r.viaPendulum}))});
+ const cubism=usesCubismParameters(next);
+ setEffectParameterConvention(cubism);
+ return JSON.stringify({contract:1,name:rig.name,parts:rig.parts.length,parameters:defs,parameterConvention:cubism?'cubism':'standrig-legacy',stage:rig.stage,rendererReady:false,trackingRedirects:redirects.map(r=>({from:r.from,to:r.to,factor:r.factor,viaPendulum:r.viaPendulum}))});
 }
 export function reset(){physics.clear();lastTime=undefined;lastPacket=undefined;facial?.reset();}
 export function evaluate(json:string){return advance(json,true);}

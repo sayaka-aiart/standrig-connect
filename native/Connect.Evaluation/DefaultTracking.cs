@@ -5,6 +5,7 @@ namespace StandRig.Connect.Evaluation;
 public static class DefaultTracking
 {
     public const double EyeClosedDefault=.55;
+    public const string CubismProfileName="Connect Cubism v1";
     public static readonly (string Source,string Parameter,string Label,double Scale,bool Invert)[] Mappings = {
         ("faceYaw","ParamAngleX","顔・左右",15,true),("facePitch","ParamAngleY","顔・上下",30,false),("faceRoll","ParamAngleZ","顔・傾き",15,false),
         ("bodyRoll","ParamBodyAngleZ","体・傾き",15,false),("bodyYaw","ParamBodyAngleX","体・左右",8,true),("bodyPitch","ParamBodyAngleY","体・上下",20,false),
@@ -12,13 +13,34 @@ public static class DefaultTracking
         ("mouthOpen","ParamMouthOpen","口の開閉",1,false),("mouthForm","ParamMouthForm","口の形",1,false),
         ("eyeBallX","ParamEyeBallX","視線・左右",1,false),("eyeBallY","ParamEyeBallY","視線・上下",1,false)
     };
+    private static readonly (string Source,string Parameter,string Label,double Scale,bool Invert)[] CubismMappings =
+        Mappings.Select(m=>m.Source switch {
+            "bodyPitch" or "bodyRoll" => (m.Source,m.Parameter,m.Label,10d,m.Invert),
+            "eyeLOpen" => (m.Source,"ParamEyeLOpen",m.Label,m.Scale,m.Invert),
+            "eyeROpen" => (m.Source,"ParamEyeROpen",m.Label,m.Scale,m.Invert),
+            "mouthOpen" => (m.Source,"ParamMouthOpenY",m.Label,m.Scale,m.Invert),
+            "mouthForm" => (m.Source,"ParamMouthRound","口の丸め",m.Scale,m.Invert),
+            _ => m
+        }).Concat(new(string,string,string,double,bool)[]{
+            ("mouthSmile","ParamMouthForm","口の表情",1,false),
+            ("browLY","ParamBrowLY","左眉・上下",1,false),
+            ("browRY","ParamBrowRY","右眉・上下",1,false)
+        }).ToArray();
+    public static IEnumerable<(string Source,string Parameter,string Label,double Scale,bool Invert)> AdjustmentMappings =>
+        Mappings.Concat(CubismMappings.Where(mapping=>!Mappings.Any(legacy=>legacy.Source==mapping.Source)));
     private static bool IsEye(string source)=>source is "eyeLOpen" or "eyeROpen";
-    public static string Create(JsonElement parameters)
+    public static string CreateForModel(JsonElement metadata) =>
+        Create(metadata.GetProperty("parameters"),metadata.TryGetProperty("parameterConvention",out var convention)
+            && convention.ValueKind==JsonValueKind.String && convention.GetString()=="cubism");
+    public static string Create(JsonElement parameters,bool cubism=false)
     {
         var ids=parameters.EnumerateArray().Select(p=>p.GetProperty("id").GetString()).ToHashSet();
-        return JsonSerializer.Serialize(new {format="standrig-tracking-profile",version=1,name="Connect standard v3",tracking=new {
+        var mappings=cubism?CubismMappings:Mappings;
+        if(!cubism&&!ids.Contains("ParamMouthOpen")&&ids.Contains("ParamMouthOpenY"))
+            mappings=mappings.Select(m=>m.Source=="mouthOpen"?(m.Source,"ParamMouthOpenY",m.Label,m.Scale,m.Invert):m).ToArray();
+        return JsonSerializer.Serialize(new {format="standrig-tracking-profile",version=1,name=cubism?CubismProfileName:"Connect standard v3",tracking=new {
             enabled=true,provider="mediapipe-face-landmarker",inputSmoothing=0,eyeSync=new {enabled=false,winkThreshold=.35,leftGain=1,rightGain=1},
-            mappings=Mappings.Where(m=>ids.Contains(m.Parameter)).Select(m=>new {id=m.Source,enabled=true,source=m.Source,parameter=m.Parameter,scale=IsEye(m.Source)?1/(1-EyeClosedDefault):m.Scale,offset=IsEye(m.Source)?-EyeClosedDefault/(1-EyeClosedDefault):0,smoothing=IsEye(m.Source)?0:.15,filter="ema",invert=m.Invert})
+            mappings=mappings.Where(m=>ids.Contains(m.Parameter)).Select(m=>new {id=m.Source,enabled=true,source=m.Source,parameter=m.Parameter,scale=IsEye(m.Source)?1/(1-EyeClosedDefault):m.Scale,offset=IsEye(m.Source)?-EyeClosedDefault/(1-EyeClosedDefault):0,smoothing=IsEye(m.Source)?0:.15,filter="ema",invert=m.Invert})
         }});
     }
     public static string UpgradeProfile(string json)
@@ -42,9 +64,10 @@ public static class DefaultTracking
     {
         if(!double.IsFinite(eyeClosed)||eyeClosed<0||eyeClosed>.6)throw new ArgumentException("Invalid eye closure threshold");
         var root=JsonNode.Parse(json)!;
+        var baselines=root["name"]?.GetValue<string>()==CubismProfileName?CubismMappings:Mappings;
         foreach(var node in root["tracking"]!["mappings"]!.AsArray()) {
             string source=node!["source"]!.GetValue<string>();
-            var baseline=Mappings.FirstOrDefault(m=>m.Source==source);
+            var baseline=baselines.FirstOrDefault(m=>m.Source==source);
             if(baseline.Source==null)continue;
             if(gains.TryGetValue(source,out var adjustment)){node["scale"]=baseline.Scale*adjustment.Gain;node["invert"]=baseline.Invert ^ adjustment.Invert;}
             if(IsEye(source)){double gain=gains.TryGetValue(source,out var eyeGain)?eyeGain.Gain:1;node["scale"]=gain/(1-eyeClosed);node["offset"]=node["invert"]?.GetValue<bool>()==true?gain:-eyeClosed*gain/(1-eyeClosed);}
