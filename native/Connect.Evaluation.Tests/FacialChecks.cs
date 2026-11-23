@@ -33,5 +33,49 @@ internal static class FacialChecks
         // Preserve the unique temp slot as evidence; it contains synthetic parameter-only data.
         Console.WriteLine("PASS native V8 facial catalog, fades, live blink, mixture, manual priority, clear, reset/reload, invalid atomicity and thread ownership");
         Console.WriteLine("PASS facial slot catalog roundtrip without transient selection");
+        CubismMouthPad(e);
+    }
+
+    private static void CubismMouthPad(ModelEvaluator evaluator)
+    {
+        // A and E use model-authored values, including an axis outside the XY pad.
+        const string bundle = """
+            {"format":"standrig-bundle","version":1,"name":"Mouth pad",
+             "rig":{"schemaVersion":"0.1.0","name":"Mouth pad","stage":{"width":64,"height":64},
+              "metadata":{"parameterConvention":"cubism"},"parameters":[],"assets":[],"parts":[],
+              "physics":{"enabled":false,"chains":[]},
+              "facialPresets":{"version":1,"expressions":[],"visemes":{"mode":"pose","fadeInTime":0,"fadeOutTime":0,
+               "presets":[
+                {"id":"A","values":{"ParamMouthForm":0.23,"ParamMouthOpenY":0.78,"ParamMouthRound":0.42}},
+                {"id":"E","values":{"ParamMouthForm":0.48,"ParamMouthOpenY":0.63,"ParamMouthRound":-0.3}}
+               ]}}}}
+            """;
+        evaluator.Load(bundle);
+        using var catalog = JsonDocument.Parse(evaluator.FacialCatalog());
+        using var authored = JsonDocument.Parse(bundle);
+        var poses = catalog.RootElement.GetProperty("visemes").GetProperty("presets");
+        var original = authored.RootElement.GetProperty("rig").GetProperty("facialPresets").GetProperty("visemes").GetProperty("presets");
+        if (poses.GetArrayLength() != original.GetArrayLength()) throw new Exception("Model vowel catalog changed on import");
+        for (int i = 0; i < poses.GetArrayLength(); i++)
+        {
+            var pose = poses[i];
+            string id = pose.GetProperty("id").GetString()!;
+            var expected = original[i].GetProperty("values");
+            foreach (string command in new[] {
+                JsonSerializer.Serialize(new { action = "viseme", id }),
+                JsonSerializer.Serialize(new { action = "visemes", weights = new Dictionary<string, double> { [id] = 1 } })
+            })
+            {
+                evaluator.FacialCommand("{\"action\":\"clear\",\"layer\":\"viseme\",\"immediate\":true}", i);
+                evaluator.FacialCommand(command, i);
+                using var frame = JsonDocument.Parse(evaluator.Evaluate(
+                    $"{{\"time\":{i},\"values\":{{\"ParamMouthForm\":-1,\"ParamMouthOpenY\":0,\"ParamMouthRound\":1}},\"physics\":false}}"));
+                var values = frame.RootElement.GetProperty("values");
+                foreach (var channel in expected.EnumerateObject())
+                    if (Math.Abs(values.GetProperty(channel.Name).GetDouble() - channel.Value.GetDouble()) > 1e-12)
+                        throw new Exception($"Model vowel {id} lost {channel.Name}");
+            }
+        }
+        Console.WriteLine("PASS saved Cubism mouth-pad poses used by manual and weighted audio commands");
     }
 }
